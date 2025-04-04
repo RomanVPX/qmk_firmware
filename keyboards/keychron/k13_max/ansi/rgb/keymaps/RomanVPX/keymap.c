@@ -23,23 +23,39 @@ enum layers {
     WIN_BASE,
     WIN_FN,
 };
+
+// Пользовательские макросы
+enum custom_keycodes {
+    MACRO0 = SAFE_RANGE,
+    MACRO1,
+    MACRO2,
+    MACRO3,
+    MACRO4,
+    MACRO5,
+    MACRO6,
+    MACRO7,
+    MACRO8,
+    MACRO13 = SAFE_RANGE + 13,
+    MACRO14,
+    MACRO15,
+};
 // clang-format off
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     [MAC_BASE] = LAYOUT_ansi_90(
-        KC_ESC,             KC_BRID,  KC_BRIU,  KC_MCTRL, KC_LNPAD, RGB_VAD,  RGB_VAI,  KC_MPRV,  KC_MPLY,  KC_MNXT,  KC_MUTE,  KC_VOLD,  KC_VOLU,  KC_P7,    KC_P8,    KC_P9,
-        KC_GRV,   KC_1,     KC_2,     KC_3,     KC_4,     KC_5,     KC_6,     KC_7,     KC_8,     KC_9,     KC_0,     KC_MINS,  KC_EQL,   KC_BSPC,  KC_P4,    KC_P5,    KC_P6,
-        KC_TAB,   KC_Q,     KC_W,     KC_E,     KC_R,     KC_T,     KC_Y,     KC_U,     KC_I,     KC_O,     KC_P,     KC_LBRC,  KC_RBRC,  KC_BSLS,  KC_P1,    KC_P2,    KC_P3,
-        KC_CAPS,  KC_A,     KC_S,     KC_D,     KC_F,     KC_G,     KC_H,     KC_J,     KC_K,     KC_L,     KC_SCLN,  KC_QUOT,            KC_ENT,   KC_DEL,   KC_P0,    KC_PDOT,
+        KC_ESC,             KC_BRID,  KC_BRIU,  KC_MCTRL, KC_LNPAD, RGB_VAD,  RGB_VAI,  KC_MPRV,  KC_MPLY,  KC_MNXT,  KC_MUTE,  KC_VOLD,  KC_VOLU,  MACRO5,   MACRO7,   MACRO6,
+        KC_GRV,   KC_1,     KC_2,     KC_3,     KC_4,     KC_5,     KC_6,     KC_7,     KC_8,     KC_9,     KC_0,     KC_MINS,  KC_EQL,   KC_BSPC,  MACRO15,  MACRO13,  MACRO14,
+        KC_TAB,   KC_Q,     KC_W,     KC_E,     KC_R,     KC_T,     KC_Y,     KC_U,     KC_I,     KC_O,     KC_P,     KC_LBRC,  KC_RBRC,  KC_BSLS,  KC_INS,   KC_HOME,  KC_PGUP,
+        KC_CAPS,  KC_A,     KC_S,     KC_D,     KC_F,     KC_G,     KC_H,     KC_J,     KC_K,     KC_L,     KC_SCLN,  KC_QUOT,            KC_ENT,   KC_DEL,   KC_END,   KC_PGDN,
         KC_LSFT,            KC_Z,     KC_X,     KC_C,     KC_V,     KC_B,     KC_N,     KC_M,     KC_COMM,  KC_DOT,   KC_SLSH,            KC_RSFT,            KC_UP,
         KC_LCTL,  KC_LOPTN, KC_LCMMD,                               KC_SPC,                                 KC_RCMMD, KC_ROPTN, MO(MAC_FN),KC_RCTL, KC_LEFT,  KC_DOWN,  KC_RGHT),
 
     [MAC_FN] = LAYOUT_ansi_90(
-        _______,            KC_F1,    KC_F2,    KC_F3,    KC_F4,    KC_F5,    KC_F6,    KC_F7,    KC_F8,    KC_F9,    KC_F10,   KC_F11,   KC_F12,   _______,  _______,  _______,
+        _______,            KC_F1,    KC_F2,    KC_F3,    KC_F4,    KC_F5,    KC_F6,    KC_F7,    KC_F8,    KC_F9,    KC_F10,   KC_F11,   KC_F12,   KC_NUM,   XXXXXXX,  _______,
         _______,  BT_HST1,  BT_HST2,  BT_HST3,  P2P4G,    _______,  _______,  _______,  _______,  _______,  _______,  _______,  _______,  _______,  _______,  _______,  _______,
         RGB_TOG,  RGB_MOD,  RGB_VAI,  RGB_HUI,  RGB_SAI,  RGB_SPI,  _______,  _______,  _______,  _______,  _______,  _______,  _______,  _______,  _______,  _______,  _______,
-        _______,  RGB_RMOD, RGB_VAD,  RGB_HUD,  RGB_SAD,  RGB_SPD,  _______,  _______,  _______,  _______,  _______,  _______,            _______,  KC_NUM,   _______,  _______,
+        _______,  RGB_RMOD, RGB_VAD,  RGB_HUD,  RGB_SAD,  RGB_SPD,  _______,  _______,  _______,  _______,  _______,  _______,            _______,  MACRO3,   _______,  MACRO4,
         _______,            _______,  _______,  _______,  _______,  BAT_LVL,  NK_TOGG,  _______,  _______,  _______,  _______,            _______,            _______,
-        _______,  _______,  _______,                                _______,                                _______,  _______,  _______,  _______,  _______,  _______,  _______),
+        _______,  _______,  _______,                                _______,                                _______,  _______,  _______,  _______,     MACRO2,  MACRO0, MACRO1),
 
     [WIN_BASE] = LAYOUT_ansi_90(
         KC_ESC,             KC_F1,    KC_F2,    KC_F3,    KC_F4,    KC_F5,    KC_F6,    KC_F7,    KC_F8,    KC_F9,    KC_F10,   KC_F11,   KC_F12,   KC_P7,    KC_P8,    KC_P9,
@@ -104,5 +120,161 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     if (!process_record_keychron_common(keycode, record)) {
         return false;
     }
+
+    // Обработка пользовательских макросов
+    switch (keycode) {
+        case MACRO0: // Стрелка вниз с модификаторами
+            if (record->event.pressed) {
+                register_code(KC_LSFT);
+                register_code(KC_LCTL);
+                register_code(KC_LALT);
+                register_code(KC_LGUI);
+                register_code(KC_DOWN);
+            } else {
+                unregister_code(KC_DOWN);
+                unregister_code(KC_LGUI);
+                unregister_code(KC_LALT);
+                unregister_code(KC_LCTL);
+                unregister_code(KC_LSFT);
+            }
+            return false;
+
+        case MACRO1: // Стрелка вправо с модификаторами
+            if (record->event.pressed) {
+                register_code(KC_LSFT);
+                register_code(KC_LCTL);
+                register_code(KC_LALT);
+                register_code(KC_LGUI);
+                register_code(KC_RGHT);
+            } else {
+                unregister_code(KC_RGHT);
+                unregister_code(KC_LGUI);
+                unregister_code(KC_LALT);
+                unregister_code(KC_LCTL);
+                unregister_code(KC_LSFT);
+            }
+            return false;
+
+        case MACRO2: // Стрелка влево с модификаторами
+            if (record->event.pressed) {
+                register_code(KC_LSFT);
+                register_code(KC_LCTL);
+                register_code(KC_LALT);
+                register_code(KC_LGUI);
+                register_code(KC_LEFT);
+            } else {
+                unregister_code(KC_LEFT);
+                unregister_code(KC_LGUI);
+                unregister_code(KC_LALT);
+                unregister_code(KC_LCTL);
+                unregister_code(KC_LSFT);
+            }
+            return false;
+
+        case MACRO3: // Клавиша 1 на цифровой клавиатуре с модификаторами
+            if (record->event.pressed) {
+                register_code(KC_LSFT);
+                register_code(KC_LCTL);
+                register_code(KC_LALT);
+                register_code(KC_LGUI);
+                register_code(KC_P1);
+            } else {
+                unregister_code(KC_P1);
+                unregister_code(KC_LGUI);
+                unregister_code(KC_LALT);
+                unregister_code(KC_LCTL);
+                unregister_code(KC_LSFT);
+            }
+            return false;
+
+        case MACRO4: // Клавиша 3 на цифровой клавиатуре с модификаторами
+            if (record->event.pressed) {
+                register_code(KC_LSFT);
+                register_code(KC_LCTL);
+                register_code(KC_LALT);
+                register_code(KC_LGUI);
+                register_code(KC_P3);
+            } else {
+                unregister_code(KC_P3);
+                unregister_code(KC_LGUI);
+                unregister_code(KC_LALT);
+                unregister_code(KC_LCTL);
+                unregister_code(KC_LSFT);
+            }
+            return false;
+
+        case MACRO5: // Клавиша C с модификаторами (левыми)
+            if (record->event.pressed) {
+                register_code(KC_LSFT);
+                register_code(KC_LCTL);
+                register_code(KC_LALT);
+                register_code(KC_LGUI);
+                register_code(KC_C);
+            } else {
+                unregister_code(KC_C);
+                unregister_code(KC_LGUI);
+                unregister_code(KC_LALT);
+                unregister_code(KC_LCTL);
+                unregister_code(KC_LSFT);
+            }
+            return false;
+
+        case MACRO6: // Клавиша T с модификаторами (правыми)
+            if (record->event.pressed) {
+                register_code(KC_RCTL);
+                register_code(KC_RALT);
+                register_code(KC_RGUI);
+                register_code(KC_RSFT);
+                register_code(KC_T);
+            } else {
+                unregister_code(KC_T);
+                unregister_code(KC_RGUI);
+                unregister_code(KC_RALT);
+                unregister_code(KC_RCTL);
+                unregister_code(KC_RSFT);
+            }
+            return false;
+
+        case MACRO7: // Клавиша N с модификаторами
+            if (record->event.pressed) {
+                register_code(KC_LSFT);
+                register_code(KC_LCTL);
+                register_code(KC_LALT);
+                register_code(KC_LGUI);
+                register_code(KC_N);
+            } else {
+                unregister_code(KC_N);
+                unregister_code(KC_LGUI);
+                unregister_code(KC_LALT);
+                unregister_code(KC_LCTL);
+                unregister_code(KC_LSFT);
+            }
+            return false;
+
+        case MACRO13: // Текстовая строка "t:renderer"
+            if (record->event.pressed) {
+                SEND_STRING("t:renderer");
+            }
+            return false;
+
+        case MACRO14: // Shift+Command+P
+            if (record->event.pressed) {
+                register_code(KC_LSFT);
+                register_code(KC_LGUI);
+                register_code(KC_P);
+            } else {
+                unregister_code(KC_P);
+                unregister_code(KC_LGUI);
+                unregister_code(KC_LSFT);
+            }
+            return false;
+
+        case MACRO15: // Текстовая строка "t:camera"
+            if (record->event.pressed) {
+                SEND_STRING("t:camera");
+            }
+            return false;
+    }
+
     return true;
 }
