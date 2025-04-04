@@ -59,6 +59,47 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 };
 
 // clang-format on
+// Функция для проверки, изменяется ли функция клавиши при переключении слоя
+bool is_key_modified_in_layer(uint8_t row, uint8_t col, uint8_t base_layer, uint8_t target_layer) {
+    uint16_t base_keycode = keymap_key_to_keycode(base_layer, (keypos_t){col, row});
+    uint16_t target_keycode = keymap_key_to_keycode(target_layer, (keypos_t){col, row});
+
+    return (base_keycode != target_keycode) && (target_keycode != KC_TRNS);
+}
+
+// RGB индикация для активных слоев
+bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
+    uint8_t current_layer = get_highest_layer(layer_state);
+    uint8_t base_layer = layer_state & (1UL << 1) ? MAC_BASE : WIN_BASE;
+
+    // Если активен функциональный слой (MAC_FN или WIN_FN)
+    if (current_layer == MAC_FN || current_layer == WIN_FN) {
+        // Вариант 1: Подсветить всю клавиатуру одним цветом
+        if (false) { // Измените на true, если хотите этот вариант
+            for (uint8_t i = led_min; i < led_max; i++) {
+                rgb_matrix_set_color(i, RGB_BLUE); // Подсветить все клавиши синим цветом
+            }
+        }
+        // Вариант 2: Подсветить только клавиши, которые изменяют своё назначение
+        else {
+            for (uint8_t row = 0; row < MATRIX_ROWS; ++row) {
+                for (uint8_t col = 0; col < MATRIX_COLS; ++col) {
+                    if (is_key_modified_in_layer(row, col, base_layer, current_layer)) {
+                        uint8_t index = g_led_config.matrix_co[row][col];
+
+                        // Если светодиод существует и находится в пределах обрабатываемого диапазона
+                        if (index != NO_LED && index >= led_min && index < led_max) {
+                            rgb_matrix_set_color(index, RGB_CYAN); // Подсветить активные клавиши бирюзовым цветом
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    return false;
+}
+
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     if (!process_record_keychron_common(keycode, record)) {
         return false;
