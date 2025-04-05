@@ -38,7 +38,11 @@ enum custom_keycodes {
     MACRO13 = SAFE_RANGE + 13,
     MACRO14,
     MACRO15,
+    TOGGLE_F_LAYER,
 };
+
+// Переменная для отслеживания состояния F-Layer
+static bool f_layer_active = false;
 // clang-format off
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     [MAC_BASE] = LAYOUT_ansi_90(
@@ -53,7 +57,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
         _______,            KC_F1,    KC_F2,    KC_F3,    KC_F4,    KC_F5,    KC_F6,    KC_F7,    KC_F8,    KC_F9,    KC_F10,   KC_F11,   KC_F12,   KC_NUM,   XXXXXXX,  _______,
         _______,  BT_HST1,  BT_HST2,  BT_HST3,  P2P4G,    _______,  _______,  _______,  _______,  _______,  _______,  _______,  _______,  _______,  _______,  _______,  _______,
         RGB_TOG,  RGB_MOD,  RGB_VAI,  RGB_HUI,  RGB_SAI,  RGB_SPI,  _______,  _______,  _______,  _______,  _______,  _______,  _______,  _______,  _______,  _______,  _______,
-        _______,  RGB_RMOD, RGB_VAD,  RGB_HUD,  RGB_SAD,  RGB_SPD,  _______,  _______,  _______,  _______,  _______,  _______,            _______,  MACRO3,   _______,  MACRO4,
+        _______,  RGB_RMOD, RGB_VAD,  RGB_HUD,  RGB_SAD,  RGB_SPD,  _______,  _______,  _______,  TOGGLE_F_LAYER, _______,  _______,            _______,  MACRO3,   _______,  MACRO4,
         _______,            _______,  _______,  _______,  _______,  BAT_LVL,  NK_TOGG,  _______,  _______,  _______,  _______,            _______,            _______,
         _______,  _______,  _______,                                _______,                                _______,  _______,  _______,  _______,     MACRO2,  MACRO0, MACRO1),
 
@@ -113,6 +117,34 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
         }
     }
 
+    // Индикация для F-Layer
+    if (f_layer_active) {
+        // Определяем цвет для F-клавиш в зависимости от активации MAC_FN
+        RGB f_keys_color;
+        if (layer_state_is(MAC_FN)) {
+            f_keys_color.r = 255; // RGB_RED
+            f_keys_color.g = 0;
+            f_keys_color.b = 0;
+        } else {
+            f_keys_color.r = 0;   // RGB_CYAN
+            f_keys_color.g = 255;
+            f_keys_color.b = 255;
+        }
+
+        // Подсвечиваем клавиши F1-F12
+        for (uint8_t row = 0; row < MATRIX_ROWS; ++row) {
+            for (uint8_t col = 0; col < MATRIX_COLS; ++col) {
+                uint16_t keycode = keymap_key_to_keycode(base_layer, (keypos_t){col, row});
+                if (keycode >= KC_F1 && keycode <= KC_F12) {
+                    uint8_t index = g_led_config.matrix_co[row][col];
+                    if (index != NO_LED && index >= led_min && index < led_max) {
+                        rgb_matrix_set_color(index, f_keys_color.r, f_keys_color.g, f_keys_color.b);
+                    }
+                }
+            }
+        }
+    }
+
     return false;
 }
 
@@ -121,8 +153,28 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         return false;
     }
 
+    // Обработка F-клавиш при активном F-Layer
+    if (f_layer_active && keycode >= KC_F1 && keycode <= KC_F12) {
+        // Если активен слой MAC_FN, оставляем стандартное поведение (macOS функции)
+        if (layer_state_is(MAC_FN)) {
+            return true;
+        }
+        // Если только F-Layer активен, отправляем напрямую F-коды
+        if (record->event.pressed) {
+            register_code(keycode);
+        } else {
+            unregister_code(keycode);
+        }
+        return false;
+    }
+
     // Обработка пользовательских макросов
     switch (keycode) {
+        case TOGGLE_F_LAYER: // Переключение F-Layer
+            if (record->event.pressed) {
+                f_layer_active = !f_layer_active; // Переключаем состояние
+            }
+            return false;
         case MACRO0: // Стрелка вниз с модификаторами
             if (record->event.pressed) {
                 register_code(KC_LSFT);
