@@ -1,14 +1,15 @@
 {
-    "usb": {
-        "pid": "0x0AD0",
-        "device_version": "1.0.0"
-    },
     "features": {
         "rgb_matrix": true
     },
+    "indicators": {
+        "caps_lock": "A13",
+        "on_state": 1
+    },
+    "matrix_pins": {
+        "io_delay": 10
+    },
     "rgb_matrix": {
-        "driver": "snled27351_spi",
-        "sleep": true,
         "animations": {
             "band_spiral_val": true,
             "breathing": true,
@@ -31,6 +32,12 @@
             "solid_splash": true,
             "splash": true,
             "typing_heatmap": true
-        }
+        },
+        "driver": "snled27351_spi",
+        "sleep": true
+    },
+    "usb": {
+        "device_version": "1.0.0",
+        "pid": "0x0AD0"
     }
 }

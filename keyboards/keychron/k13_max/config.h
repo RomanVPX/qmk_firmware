@@ -17,8 +17,6 @@
 #pragma once
 
 /* Caps lock LED */
-#define LED_CAPS_LOCK_PIN A13
-#define LED_PIN_ON_STATE 1
 
 #ifdef LK_WIRELESS_ENABLE
 /* Hardware configuration */
@@ -91,4 +89,3 @@
 #define FN_KEY_2 MO(3)
 #define BL_TRIG_KEY KC_P5
 
-#define MATRIX_IO_DELAY 10
