@@ -32,34 +32,58 @@ RGB Matrix - это подсистема QMK для управления RGB-с�
 - Избежать проблем с деактивацией F-Layer и конфликтов с другими клавишами
 - Сохранить работоспособность всех остальных клавиш через прозрачность
 
-### Паттерн "Управление состоянием через коллбэк"
-В функции `layer_state_set_user()` мы обрабатываем изменения слоев и выполняем специальную логику:
+### Паттерн "XOR-инвертирование слоя"
+В функции `layer_state_set_user()` мы используем XOR-операцию для элегантного инвертирования состояния слоя MAC_F_LAYER при активации/деактивации MAC_FN:
 ```c
 layer_state_t layer_state_set_user(layer_state_t state) {
-    // Проверяем активацию MAC_FN
-    if (IS_LAYER_ON_STATE(state, MAC_FN) && !layer_state_is(MAC_FN)) {
-        // Запоминаем состояние MAC_F_LAYER и временно отключаем его
-        f_layer_was_active = layer_state_is(MAC_F_LAYER);
-        if (f_layer_was_active) {
-            state = state & ~(1UL << MAC_F_LAYER);
-        }
+    // Проверяем активацию/деактивацию MAC_FN
+    if ((IS_LAYER_ON_STATE(state, MAC_FN) && !layer_state_is(MAC_FN)) ||
+        (!IS_LAYER_ON_STATE(state, MAC_FN) && layer_state_is(MAC_FN))) {
+        // MAC_FN активируется или деактивируется - инвертируем MAC_F_LAYER
+        state = state ^ (1UL << MAC_F_LAYER);
     }
-    // Проверяем деактивацию MAC_FN
-    else if (!IS_LAYER_ON_STATE(state, MAC_FN) && layer_state_is(MAC_FN)) {
-        // Восстанавливаем MAC_F_LAYER, если он был активен
-        if (f_layer_was_active) {
-            state = state | (1UL << MAC_F_LAYER);
-            f_layer_was_active = false;
-        }
-    }
+    
     return state;
 }
 ```
 
-### Паттерн "Функциональная индикация"
-Используем функцию `rgb_matrix_indicators_advanced_user()` и вспомогательную функцию `highlight_f_keys()` для визуального отображения состояния F-Layer:
-- Бирюзовая подсветка F-клавиш при активном MAC_F_LAYER
-- Красная подсветка F-клавиш при активном MAC_FN, если MAC_F_LAYER был временно отключен
+Этот паттерн обеспечивает:
+- Минимальный код для управления двумя взаимодействующими слоями
+- Автоматическое восстановление предыдущего состояния слоя
+- Отсутствие необходимости в дополнительных переменных состояния
+- Интуитивное понимание логики: "при переключении одного слоя инвертируем другой"
+
+### Паттерн "Функциональная индикация с проверкой активности слоя"
+Используем функцию `layer_state_is()` вместо проверки `current_layer` для более корректной индикации состояния клавиш при нескольких активных слоях:
+```c
+bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
+    uint8_t base_layer = layer_state & (1UL << 1) ? MAC_BASE : WIN_BASE;
+
+    // Если активен F-Layer для macOS, подсвечиваем F-клавиши бирюзовым
+    if (layer_state_is(MAC_F_LAYER)) {
+        highlight_f_keys(led_min, led_max, 0, 255, 255); // RGB_CYAN
+    }
+
+    // Если активен функциональный слой (MAC_FN или WIN_FN)
+    if (layer_state_is(MAC_FN) || layer_state_is(WIN_FN)) {
+        uint8_t fn_layer = layer_state_is(MAC_FN) ? MAC_FN : WIN_FN;
+        
+        // Подсветить только клавиши, которые изменяют своё назначение
+        for (uint8_t row = 0; row < MATRIX_ROWS; ++row) {
+            for (uint8_t col = 0; col < MATRIX_COLS; ++col) {
+                if (is_key_modified_in_layer(row, col, base_layer, fn_layer)) {
+                    uint8_t index = g_led_config.matrix_co[row][col];
+                    if (index != NO_LED && index >= led_min && index < led_max) {
+                        rgb_matrix_set_color(index, RGB_CYAN);
+                    }
+                }
+            }
+        }
+    }
+
+    return false;
+}
+```
 
 ### Паттерн "Выделение повторяющейся логики"
 Для улучшения читаемости и поддерживаемости кода мы выделили повторяющуюся логику подсветки F-клавиш в отдельную функцию:
@@ -79,16 +103,31 @@ void highlight_f_keys(uint8_t led_min, uint8_t led_max, uint8_t r, uint8_t g, ui
 }
 ```
 
+### Паттерн "Упрощенное переключение слоя"
+В обработчике TOGGLE_F_LAYER мы используем простую и понятную логику переключения слоя:
+```c
+case TOGGLE_F_LAYER: // Переключение F-Layer
+    if (record->event.pressed) {
+        // Просто переключаем слой MAC_F_LAYER
+        if (layer_state_is(MAC_F_LAYER)) {
+            layer_off(MAC_F_LAYER);
+        } else {
+            layer_on(MAC_F_LAYER);
+        }
+    }
+    return false;
+```
+
 ## Ключевые взаимодействия компонентов
 
 ```
 ┌───────────────────────┐      ┌────────────────────────┐
-│ layer_state_set_user  │◄────►│ Состояние MAC_F_LAYER  │
+│ layer_state_set_user  │◄────►│ MAC_F_LAYER (инверсия) │
 └───────────────────────┘      └────────────────────────┘
            ▲                             │
            │                             ▼
 ┌───────────────────────┐      ┌────────────────────────┐
-│ process_record_user   │      │ highlight_f_keys       │
+│ process_record_user   │      │ Проверка layer_state_is│
 └───────────────────────┘      └────────────────────────┘
            ▲                             │
            │                             ▼
@@ -103,24 +142,22 @@ void highlight_f_keys(uint8_t led_min, uint8_t led_max, uint8_t r, uint8_t g, ui
 - MAC_FN - функциональный слой для macOS, активируемый клавишей Fn
 - WIN_BASE - базовый слой для Windows
 - WIN_FN - функциональный слой для Windows, активируемый клавишей Fn
-- MAC_F_LAYER - слой для F-клавиш в macOS, активируемый комбинацией [MO+l]
+- MAC_F_LAYER - слой для F-клавиш в macOS, активируемый комбинацией [MO+l] или инвертированием при активации MAC_FN
 
 ## Критические пути реализации
 
 ### Активация/деактивация F-Layer
-Активация/деактивация F-Layer происходит при нажатии комбинации [MO+l], где:
-- MO - клавиша Fn, активирующая слой MAC_FN
-- l - клавиша 'l' на слое MAC_FN
+Активация/деактивация F-Layer происходит двумя способами:
+1. При нажатии комбинации [MO+l] через обработчик TOGGLE_F_LAYER
+2. Автоматически инвертируется при активации/деактивации MAC_FN через коллбэк layer_state_set_user()
 
 ### Обработка F-клавиш
 Обработка F-клавиш происходит автоматически через слой MAC_F_LAYER, который содержит клавиши F1-F12 вместо медиа-клавиш.
 
 ### Взаимодействие с MAC_FN
-При активации MAC_FN, если MAC_F_LAYER активен:
-1. Состояние MAC_F_LAYER сохраняется в переменной f_layer_was_active
-2. MAC_F_LAYER временно отключается
-3. F-клавиши подсвечиваются красным цветом для индикации
-4. При деактивации MAC_FN, MAC_F_LAYER автоматически восстанавливается
+Взаимодействие с MAC_FN происходит через XOR-инвертирование слоя MAC_F_LAYER:
+1. При активации MAC_FN, состояние MAC_F_LAYER инвертируется
+2. При деактивации MAC_FN, состояние MAC_F_LAYER инвертируется обратно
 
 ### Визуальная индикация
-Визуальная индикация состояния F-Layer происходит в функции `rgb_matrix_indicators_advanced_user()` с использованием вспомогательной функции `highlight_f_keys()`.
+Визуальная индикация состояния F-Layer происходит в функции `rgb_matrix_indicators_advanced_user()` с использованием проверок `layer_state_is()` и вспомогательной функции `highlight_f_keys()`.
