@@ -97,6 +97,12 @@ layer_state_t layer_state_set_user(layer_state_t state) {
         state = state ^ (1UL << MAC_F_LAYER);
     }
 
+    // Проверяем переключение на слой WIN_BASE или WIN_FN
+    if (IS_LAYER_ON_STATE(state, WIN_BASE) || IS_LAYER_ON_STATE(state, WIN_FN)) {
+        // Если переключились в режим Windows, отключаем MAC_F_LAYER
+        state = state & ~(1UL << MAC_F_LAYER);
+    }
+
     return state;
 }
 
