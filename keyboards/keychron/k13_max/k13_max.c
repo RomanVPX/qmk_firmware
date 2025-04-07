@@ -38,6 +38,9 @@ pin_t p24g_led_pins[] = P24G_HOST_LED_PIN_LIST;
 
 bool dip_switch_update_kb(uint8_t index, bool active) {
     if (index == 0) {
+        if (!active && layer_state_is(4)) { // MAC_F_LAYER = 4
+            layer_off(4);
+        }
         default_layer_set(1UL << (active ? 0 : 2));
     }
     dip_switch_update_user(index, active);
