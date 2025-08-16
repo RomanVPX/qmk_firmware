@@ -191,14 +191,15 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
     return false;
 }
 
+
+#define HYPER_REGISTER register_code(KC_LSFT); register_code(KC_LCTL); register_code(KC_LALT); register_code(KC_LGUI);
+#define HYPER_UNREGISTER unregister_code(KC_LGUI); unregister_code(KC_LALT); unregister_code(KC_LCTL); unregister_code(KC_LSFT);
+
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     if (!process_record_keychron_common(keycode, record)) {
         return false;
     }
-
     // F-клавиши обрабатываются автоматически через слой MAC_F_LAYER
-
-    // Обработка пользовательских макросов
     switch (keycode) {
         case TOGGLE_F_LAYER: // Переключение F-Layer
             if (record->event.pressed) {
@@ -208,143 +209,86 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 } else {
                     layer_on(MAC_F_LAYER);
                 }
-            }
-            return false;
-        case MACRO0: // Стрелка вниз с модификаторами
+            } return false;
+
+        case MACRO0: // Hyper ↓
             if (record->event.pressed) {
-                register_code(KC_LSFT);
-                register_code(KC_LCTL);
-                register_code(KC_LALT);
-                register_code(KC_LGUI);
+                HYPER_REGISTER
                 register_code(KC_DOWN);
             } else {
                 unregister_code(KC_DOWN);
-                unregister_code(KC_LGUI);
-                unregister_code(KC_LALT);
-                unregister_code(KC_LCTL);
-                unregister_code(KC_LSFT);
-            }
-            return false;
+                HYPER_UNREGISTER
+            } return false;
 
-        case MACRO1: // Стрелка вправо с модификаторами
+        case MACRO1: // Hyper →
             if (record->event.pressed) {
-                register_code(KC_LSFT);
-                register_code(KC_LCTL);
-                register_code(KC_LALT);
-                register_code(KC_LGUI);
+                HYPER_REGISTER
                 register_code(KC_RGHT);
             } else {
                 unregister_code(KC_RGHT);
-                unregister_code(KC_LGUI);
-                unregister_code(KC_LALT);
-                unregister_code(KC_LCTL);
-                unregister_code(KC_LSFT);
-            }
-            return false;
+                HYPER_UNREGISTER
+            } return false;
 
-        case MACRO2: // Стрелка влево с модификаторами
+        case MACRO2: // Hyper ←
             if (record->event.pressed) {
-                register_code(KC_LSFT);
-                register_code(KC_LCTL);
-                register_code(KC_LALT);
-                register_code(KC_LGUI);
+                HYPER_REGISTER
                 register_code(KC_LEFT);
             } else {
                 unregister_code(KC_LEFT);
-                unregister_code(KC_LGUI);
-                unregister_code(KC_LALT);
-                unregister_code(KC_LCTL);
-                unregister_code(KC_LSFT);
+                HYPER_UNREGISTER
             }
             return false;
-
-        case MACRO3: // Клавиша 1 на цифровой клавиатуре с модификаторами
+        case MACRO3: // Hyper NUMPAD1
             if (record->event.pressed) {
-                register_code(KC_LSFT);
-                register_code(KC_LCTL);
-                register_code(KC_LALT);
-                register_code(KC_LGUI);
+                HYPER_REGISTER
                 register_code(KC_P1);
             } else {
                 unregister_code(KC_P1);
-                unregister_code(KC_LGUI);
-                unregister_code(KC_LALT);
-                unregister_code(KC_LCTL);
-                unregister_code(KC_LSFT);
-            }
-            return false;
+                HYPER_UNREGISTER
+            } return false;
 
-        case MACRO4: // Клавиша 3 на цифровой клавиатуре с модификаторами
+        case MACRO4: // Hyper NUMPAD3
             if (record->event.pressed) {
-                register_code(KC_LSFT);
-                register_code(KC_LCTL);
-                register_code(KC_LALT);
-                register_code(KC_LGUI);
+                HYPER_REGISTER
                 register_code(KC_P3);
             } else {
                 unregister_code(KC_P3);
-                unregister_code(KC_LGUI);
-                unregister_code(KC_LALT);
-                unregister_code(KC_LCTL);
-                unregister_code(KC_LSFT);
-            }
-            return false;
+                HYPER_UNREGISTER
+            } return false;
 
-        case MACRO5: // Клавиша C с модификаторами (левыми)
+        case MACRO5: // Hyper C
             if (record->event.pressed) {
-                register_code(KC_LSFT);
-                register_code(KC_LCTL);
-                register_code(KC_LALT);
-                register_code(KC_LGUI);
+                HYPER_REGISTER
                 register_code(KC_C);
             } else {
                 unregister_code(KC_C);
-                unregister_code(KC_LGUI);
-                unregister_code(KC_LALT);
-                unregister_code(KC_LCTL);
-                unregister_code(KC_LSFT);
-            }
-            return false;
+                HYPER_UNREGISTER
+            } return false;
 
-        case MACRO6: // Клавиша T с модификаторами (правыми)
+        case MACRO6: // Hyper T
             if (record->event.pressed) {
-                register_code(KC_RCTL);
-                register_code(KC_RALT);
-                register_code(KC_RGUI);
-                register_code(KC_RSFT);
+                HYPER_REGISTER
                 register_code(KC_T);
             } else {
                 unregister_code(KC_T);
-                unregister_code(KC_RGUI);
-                unregister_code(KC_RALT);
-                unregister_code(KC_RCTL);
-                unregister_code(KC_RSFT);
-            }
-            return false;
+                HYPER_UNREGISTER
+            } return false;
 
-        case MACRO7: // Клавиша N с модификаторами
+        case MACRO7: // Hyper N
             if (record->event.pressed) {
-                register_code(KC_LSFT);
-                register_code(KC_LCTL);
-                register_code(KC_LALT);
-                register_code(KC_LGUI);
+                HYPER_REGISTER
                 register_code(KC_N);
             } else {
                 unregister_code(KC_N);
-                unregister_code(KC_LGUI);
-                unregister_code(KC_LALT);
-                unregister_code(KC_LCTL);
-                unregister_code(KC_LSFT);
-            }
-            return false;
+                HYPER_UNREGISTER
+            } return false;
 
-        case MACRO13: // Текстовая строка "t:renderer"
+        case MACRO13: // "t:renderer"
             if (record->event.pressed) {
                 SEND_STRING("t:renderer");
-            }
-            return false;
+            } return false;
 
-        case MACRO14: // Shift+Command+P
+        case MACRO14: // ⇧⌘P
             if (record->event.pressed) {
                 register_code(KC_LSFT);
                 register_code(KC_LGUI);
@@ -353,14 +297,12 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 unregister_code(KC_P);
                 unregister_code(KC_LGUI);
                 unregister_code(KC_LSFT);
-            }
-            return false;
+            } return false;
 
-        case MACRO15: // Текстовая строка "t:camera"
+        case MACRO15: // "t:camera"
             if (record->event.pressed) {
                 SEND_STRING("t:camera");
-            }
-            return false;
+            } return false;
     }
 
     return true;
