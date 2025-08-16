@@ -23,7 +23,7 @@ enum layers {
     MAC_FN,
     WIN_BASE,
     WIN_FN,
-    MAC_F_LAYER,  // Новый слой для F-клавиш в macOS
+    MAC_F_LAYER,  // Слой для клавиш F1-F12 в macOS
 };
 
 // Пользовательские макросы
@@ -58,54 +58,55 @@ enum custom_keycodes {
 |`RGB_VAD`          |          |Decrease value (brightness), increase value when Shift is held                        |
 |`RGB_SPI`          |          |Increase effect speed (does not support eeprom yet), decrease speed when Shift is held|
 |`RGB_SPD`          |          |Decrease effect speed (does not support eeprom yet), increase speed when Shift is held|
+|`KC_NO`            |'XXXXXXX' |Ignore this key                                                                       |
 |-------------------|----------|--------------------------------------------------------------------------------------|
 */
 
 // clang-format off
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     [MAC_BASE] = LAYOUT_ansi_90(
-        KC_ESC,             KC_BRID,  KC_BRIU,  KC_MCTRL, KC_LNPAD, RGB_VAD,  RGB_VAI,  KC_MPRV, KC_MPLY,       KC_MNXT,  KC_MUTE,  KC_VOLD,  KC_VOLU,  MACRO5,   MACRO7,   MACRO6,
-        KC_GRV,   KC_1,     KC_2,     KC_3,     KC_4,     KC_5,     KC_6,     KC_7,     KC_8,    KC_9,          KC_0,     KC_MINS,  KC_EQL,   KC_BSPC,  MACRO15,  MACRO13,  MACRO14,
-        KC_TAB,   KC_Q,     KC_W,     KC_E,     KC_R,     KC_T,     KC_Y,     KC_U,     KC_I,    KC_O,          KC_P,     KC_LBRC,  KC_RBRC,  KC_BSLS,  KC_INS,   KC_HOME,  KC_PGUP,
-        KC_CAPS,  KC_A,     KC_S,     KC_D,     KC_F,     KC_G,     KC_H,     KC_J,     KC_K,    KC_L,          KC_SCLN,  KC_QUOT,            KC_ENT,   KC_DEL,   KC_END,   KC_PGDN,
-        KC_LSFT,            KC_Z,     KC_X,     KC_C,     KC_V,     KC_B,     KC_N,     KC_M,    KC_COMM,       KC_DOT,   KC_SLSH,            KC_RSFT,            KC_UP,
-        KC_LCTL,  KC_LOPTN, KC_LCMMD,                               KC_SPC,                                     KC_RCMMD, KC_ROPTN, MO(MAC_FN),KC_RCTL, KC_LEFT,  KC_DOWN,  KC_RGHT),
+        KC_ESC,             KC_BRID,  KC_BRIU,  KC_MCTRL, KC_LNPAD, RGB_VAD,  RGB_VAI,  KC_MPRV,    KC_MPLY,     KC_MNXT,  KC_MUTE,  KC_VOLD,  KC_VOLU,  MACRO5,   MACRO7,   MACRO6,
+        KC_GRV,   KC_1,     KC_2,     KC_3,     KC_4,     KC_5,     KC_6,     KC_7,     KC_8,       KC_9,        KC_0,     KC_MINS,  KC_EQL,   KC_BSPC,  MACRO15,  MACRO13,  MACRO14,
+        KC_TAB,   KC_Q,     KC_W,     KC_E,     KC_R,     KC_T,     KC_Y,     KC_U,     KC_I,       KC_O,        KC_P,     KC_LBRC,  KC_RBRC,  KC_BSLS,  KC_INS,   KC_HOME,  KC_PGUP,
+        KC_CAPS,  KC_A,     KC_S,     KC_D,     KC_F,     KC_G,     KC_H,     KC_J,     KC_K,       KC_L,        KC_SCLN,  KC_QUOT,            KC_ENT,   KC_DEL,   KC_END,   KC_PGDN,
+        KC_LSFT,            KC_Z,     KC_X,     KC_C,     KC_V,     KC_B,     KC_N,     KC_M,       KC_COMM,     KC_DOT,   KC_SLSH,            KC_RSFT,            KC_UP,
+        KC_LCTL,  KC_LOPTN, KC_LCMMD,                               KC_SPC,                                      KC_RCMMD, KC_ROPTN, MO(MAC_FN),KC_RCTL, KC_LEFT,  KC_DOWN,  KC_RGHT),
 
     [MAC_FN] = LAYOUT_ansi_90(
-        _______,            _______,  _______,  _______,  _______,  _______,  _______,  _______, _______,       _______,  _______,  _______,  _______,  KC_NUM,   XXXXXXX,  _______,
-        _______,  BT_HST1,  BT_HST2,  BT_HST3,  P2P4G,    _______,  _______,  _______,  _______, _______,       _______,  _______,  _______,  _______,  _______,  _______,  _______,
-        RGB_TOG,  RGB_MOD,  RGB_VAI,  RGB_HUI,  RGB_SAI,  RGB_SPI,  _______,  _______,  _______, _______,       _______,  _______,  _______,  _______,  _______,  _______,  _______,
-        _______,  RGB_RMOD, RGB_VAD,  RGB_HUD,  RGB_SAD,  RGB_SPD,  _______,  _______,  _______, TOGGLE_F_LAYER,_______,  _______,  _______,  MACRO3,   _______,  MACRO4,
-        _______,            _______,  _______,  _______,  _______,  BAT_LVL,  NK_TOGG,  _______, _______,       _______,  _______,            _______,            _______,
-        _______,  _______,  _______,                                _______,                                    _______,  _______,  _______,  _______,  MACRO2,   MACRO0,   MACRO1),
+        _______,            _______,  _______,  _______,  _______,  _______,  _______,  _______,    _______,     _______,  _______,  _______,  _______,  KC_NUM,   XXXXXXX,  _______,
+        _______,  BT_HST1,  BT_HST2,  BT_HST3,  P2P4G,    _______,  _______,  _______,  _______,    _______,     _______,  _______,  _______,  _______,  _______,  _______,  _______,
+        RGB_TOG,  RGB_MOD,  RGB_VAI,  RGB_HUI,  RGB_SAI,  RGB_SPI,  _______,  _______,  _______,    _______,     _______,  _______,  _______,  _______,  _______,  _______,  _______,
+        QK_BOOT,  RGB_RMOD, RGB_VAD,  RGB_HUD,  RGB_SAD,  RGB_SPD,  _______,  _______,  _______, TOGGLE_F_LAYER, _______,  _______,  _______,  MACRO3,   _______,  MACRO4,
+        _______,            _______,  _______,  _______,  _______,  BAT_LVL,  NK_TOGG,  _______,    _______,     _______,  _______,            _______,            _______,
+        _______,  _______,  _______,                                _______,                                     _______,  _______,  _______,  _______,  MACRO2,   MACRO0,   MACRO1),
 
     [WIN_BASE] = LAYOUT_ansi_90(
-        KC_ESC,             KC_F1,    KC_F2,    KC_F3,    KC_F4,    KC_F5,    KC_F6,    KC_F7,   KC_F8,         KC_F9,    KC_F10,   KC_F11,   KC_F12,   XXXXXXX,  XXXXXXX,  XXXXXXX,
-        KC_GRV,   KC_1,     KC_2,     KC_3,     KC_4,     KC_5,     KC_6,     KC_7,     KC_8,    KC_9,          KC_0,     KC_MINS,  KC_EQL,   KC_BSPC,  XXXXXXX,  XXXXXXX,  XXXXXXX,
-        KC_TAB,   KC_Q,     KC_W,     KC_E,     KC_R,     KC_T,     KC_Y,     KC_U,     KC_I,    KC_O,          KC_P,     KC_LBRC,  KC_RBRC,  KC_BSLS,  KC_INS,   KC_HOME,  KC_PGUP,
-        KC_CAPS,  KC_A,     KC_S,     KC_D,     KC_F,     KC_G,     KC_H,     KC_J,     KC_K,    KC_L,          KC_SCLN,  KC_QUOT,            KC_ENT,   KC_DEL,   KC_END,   KC_PGDN,
-        KC_LSFT,            KC_Z,     KC_X,     KC_C,     KC_V,     KC_B,     KC_N,     KC_M,    KC_COMM,       KC_DOT,   KC_SLSH,            KC_RSFT,            KC_UP,
-        KC_LCTL,  KC_LWIN,  KC_LALT,                                KC_SPC,                                     KC_RALT,  KC_RGUI, MO(WIN_FN),KC_RCTL,  KC_LEFT,  KC_DOWN,  KC_RGHT),
+        KC_ESC,             KC_F1,    KC_F2,    KC_F3,    KC_F4,    KC_F5,    KC_F6,    KC_F7,      KC_F8,       KC_F9,    KC_F10,   KC_F11,   KC_F12,   XXXXXXX,  XXXXXXX,  XXXXXXX,
+        KC_GRV,   KC_1,     KC_2,     KC_3,     KC_4,     KC_5,     KC_6,     KC_7,     KC_8,       KC_9,        KC_0,     KC_MINS,  KC_EQL,   KC_BSPC,  XXXXXXX,  XXXXXXX,  XXXXXXX,
+        KC_TAB,   KC_Q,     KC_W,     KC_E,     KC_R,     KC_T,     KC_Y,     KC_U,     KC_I,       KC_O,        KC_P,     KC_LBRC,  KC_RBRC,  KC_BSLS,  KC_INS,   KC_HOME,  KC_PGUP,
+        KC_CAPS,  KC_A,     KC_S,     KC_D,     KC_F,     KC_G,     KC_H,     KC_J,     KC_K,       KC_L,        KC_SCLN,  KC_QUOT,            KC_ENT,   KC_DEL,   KC_END,   KC_PGDN,
+        KC_LSFT,            KC_Z,     KC_X,     KC_C,     KC_V,     KC_B,     KC_N,     KC_M,       KC_COMM,     KC_DOT,   KC_SLSH,            KC_RSFT,            KC_UP,
+        KC_LCTL,  KC_LWIN,  KC_LALT,                                KC_SPC,                                      KC_RALT,  KC_RGUI, MO(WIN_FN),KC_RCTL,  KC_LEFT,  KC_DOWN,  KC_RGHT),
 
     [WIN_FN] = LAYOUT_ansi_90(
-        _______,            KC_BRID,  KC_BRIU,  KC_TASK,  KC_FILE,  RGB_VAD,  RGB_VAI,  KC_MPRV, KC_MPLY,       KC_MNXT,  KC_MUTE,  KC_VOLD,  KC_VOLU,  _______,  _______,  _______,
-        _______,  BT_HST1,  BT_HST2,  BT_HST3,  P2P4G,    _______,  _______,  _______,  _______, _______,       _______,  _______,  _______,  _______,  _______,  _______,  _______,
-        RGB_TOG,  RGB_MOD,  RGB_VAI,  RGB_HUI,  RGB_SAI,  RGB_SPI,  _______,  _______,  _______, _______,       _______,  _______,  _______,  _______,  _______,  _______,  _______,
-        _______,  RGB_RMOD, RGB_VAD,  RGB_HUD,  RGB_SAD,  RGB_SPD,  _______,  _______,  _______, _______,       _______,  _______,            _______,  KC_NUM,   _______,  _______,
-        _______,            _______,  _______,  _______,  _______,  BAT_LVL,  NK_TOGG,  _______, _______,       _______,  _______,            _______,            _______,
-        _______,  _______,  _______,                                _______,                                    _______,  _______,  _______,  _______,  _______,  _______,  _______),
+        _______,            KC_BRID,  KC_BRIU,  KC_TASK,  KC_FILE,  RGB_VAD,  RGB_VAI,  KC_MPRV,    KC_MPLY,     KC_MNXT,  KC_MUTE,  KC_VOLD,  KC_VOLU,  _______,  _______,  _______,
+        _______,  BT_HST1,  BT_HST2,  BT_HST3,  P2P4G,    _______,  _______,  _______,  _______,    _______,     _______,  _______,  _______,  _______,  _______,  _______,  _______,
+        RGB_TOG,  RGB_MOD,  RGB_VAI,  RGB_HUI,  RGB_SAI,  RGB_SPI,  _______,  _______,  _______,    _______,     _______,  _______,  _______,  _______,  _______,  _______,  _______,
+        QK_BOOT,  RGB_RMOD, RGB_VAD,  RGB_HUD,  RGB_SAD,  RGB_SPD,  _______,  _______,  _______,    _______,     _______,  _______,            _______,  KC_NUM,   _______,  _______,
+        _______,            _______,  _______,  _______,  _______,  BAT_LVL,  NK_TOGG,  _______,    _______,     _______,  _______,            _______,            _______,
+        _______,  _______,  _______,                                _______,                                     _______,  _______,  _______,  _______,  _______,  _______,  _______),
 
     // MAC_F_LAYER - прозрачный, кроме F1-F12
     [MAC_F_LAYER] = LAYOUT_ansi_90(
-        _______,             KC_F1,    KC_F2,    KC_F3,    KC_F4,    KC_F5,    KC_F6,    KC_F7,   KC_F8,         KC_F9,    KC_F10,   KC_F11,   KC_F12,   _______,  _______,  _______,
-        _______,  _______,   _______,  _______, _______,  _______,   _______, _______,   _______, _______,       _______,  _______,  _______,  _______,  _______,  _______,  _______,
-        _______,  _______,   _______,  _______, _______,  _______,   _______, _______,   _______, _______,       _______,  _______,  _______,  _______,  _______,  _______,  _______,
-        _______,  _______,   _______,  _______, _______,  _______,   _______, _______,   _______, _______,       _______,  _______,            _______,  _______,  _______,  _______,
-        _______,             _______,  _______, _______,  _______,   _______, _______,   _______, _______,       _______,  _______,            _______,            _______,
-        _______,  _______,   _______,                                _______,                                    _______,  _______,  _______,  _______,  _______,  _______,  _______)
+        _______,             KC_F1,    KC_F2,    KC_F3,    KC_F4,    KC_F5,    KC_F6,    KC_F7,      KC_F8,       KC_F9,    KC_F10,   KC_F11,   KC_F12,   _______,  _______,  _______,
+        _______,  _______,   _______,  _______, _______,  _______,   _______, _______,   _______,    _______,     _______,  _______,  _______,  _______,  _______,  _______,  _______,
+        _______,  _______,   _______,  _______, _______,  _______,   _______, _______,   _______,    _______,     _______,  _______,  _______,  _______,  _______,  _______,  _______,
+        _______,  _______,   _______,  _______, _______,  _______,   _______, _______,   _______,    _______,     _______,  _______,            _______,  _______,  _______,  _______,
+        _______,             _______,  _______, _______,  _______,   _______, _______,   _______,    _______,     _______,  _______,            _______,            _______,
+        _______,  _______,   _______,                                _______,                                     _______,  _______,  _______,  _______,  _______,  _______,  _______)
 };
 // clang-format on
-//
+
 // Вызывается при каждом изменении состояния слоев
 layer_state_t layer_state_set_user(layer_state_t state) {
     // Проверяем активацию/деактивацию MAC_FN
@@ -153,7 +154,7 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
 
     // Если активен F-Layer для macOS, подсвечиваем F-клавиши бирюзовым
     if (layer_state_is(MAC_F_LAYER)) {
-        highlight_f_keys(led_min, led_max, 0, 255, 255); // RGB_CYAN
+        highlight_f_keys(led_min, led_max, RGB_CYAN);
     }
 
     // Если активен функциональный слой (MAC_FN или WIN_FN)
@@ -187,23 +188,16 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
             }
         }
     }
-
     return false;
 }
-
-
-#define HYPER_REGISTER register_code(KC_LSFT); register_code(KC_LCTL); register_code(KC_LALT); register_code(KC_LGUI);
-#define HYPER_UNREGISTER unregister_code(KC_LGUI); unregister_code(KC_LALT); unregister_code(KC_LCTL); unregister_code(KC_LSFT);
 
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     if (!process_record_keychron_common(keycode, record)) {
         return false;
     }
-    // F-клавиши обрабатываются автоматически через слой MAC_F_LAYER
     switch (keycode) {
         case TOGGLE_F_LAYER: // Переключение F-Layer
             if (record->event.pressed) {
-                // Просто переключаем слой MAC_F_LAYER
                 if (layer_state_is(MAC_F_LAYER)) {
                     layer_off(MAC_F_LAYER);
                 } else {
@@ -213,92 +207,44 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 
         case MACRO0: // Hyper ↓
             if (record->event.pressed) {
-                HYPER_REGISTER
-                register_code(KC_DOWN);
-            } else {
-                unregister_code(KC_DOWN);
-                HYPER_UNREGISTER
+                tap_code16(HYPR(KC_DOWN));
             } return false;
-
         case MACRO1: // Hyper →
             if (record->event.pressed) {
-                HYPER_REGISTER
-                register_code(KC_RGHT);
-            } else {
-                unregister_code(KC_RGHT);
-                HYPER_UNREGISTER
+                tap_code16(HYPR(KC_RGHT));
             } return false;
-
         case MACRO2: // Hyper ←
             if (record->event.pressed) {
-                HYPER_REGISTER
-                register_code(KC_LEFT);
-            } else {
-                unregister_code(KC_LEFT);
-                HYPER_UNREGISTER
-            }
-            return false;
+                tap_code16(HYPR(KC_LEFT));
+            } return false;
         case MACRO3: // Hyper NUMPAD1
             if (record->event.pressed) {
-                HYPER_REGISTER
-                register_code(KC_P1);
-            } else {
-                unregister_code(KC_P1);
-                HYPER_UNREGISTER
+                tap_code16(HYPR(KC_P1));
             } return false;
-
         case MACRO4: // Hyper NUMPAD3
             if (record->event.pressed) {
-                HYPER_REGISTER
-                register_code(KC_P3);
-            } else {
-                unregister_code(KC_P3);
-                HYPER_UNREGISTER
+                tap_code16(HYPR(KC_P3));
             } return false;
-
         case MACRO5: // Hyper C
             if (record->event.pressed) {
-                HYPER_REGISTER
-                register_code(KC_C);
-            } else {
-                unregister_code(KC_C);
-                HYPER_UNREGISTER
+                tap_code16(HYPR(KC_C));
             } return false;
-
         case MACRO6: // Hyper T
             if (record->event.pressed) {
-                HYPER_REGISTER
-                register_code(KC_T);
-            } else {
-                unregister_code(KC_T);
-                HYPER_UNREGISTER
+                tap_code16(HYPR(KC_T));
             } return false;
-
         case MACRO7: // Hyper N
             if (record->event.pressed) {
-                HYPER_REGISTER
-                register_code(KC_N);
-            } else {
-                unregister_code(KC_N);
-                HYPER_UNREGISTER
+                tap_code16(HYPR(KC_N));
             } return false;
-
         case MACRO13: // "t:renderer"
             if (record->event.pressed) {
                 SEND_STRING("t:renderer");
             } return false;
-
         case MACRO14: // ⇧⌘P
             if (record->event.pressed) {
-                register_code(KC_LSFT);
-                register_code(KC_LGUI);
-                register_code(KC_P);
-            } else {
-                unregister_code(KC_P);
-                unregister_code(KC_LGUI);
-                unregister_code(KC_LSFT);
+                tap_code16(SCMD(KC_P));
             } return false;
-
         case MACRO15: // "t:camera"
             if (record->event.pressed) {
                 SEND_STRING("t:camera");
