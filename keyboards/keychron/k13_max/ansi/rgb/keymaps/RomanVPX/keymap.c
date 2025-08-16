@@ -16,6 +16,7 @@
 
 #include QMK_KEYBOARD_H
 #include "keychron_common.h"
+#include <math.h>
 
 enum layers {
     MAC_BASE,
@@ -42,52 +43,69 @@ enum custom_keycodes {
     TOGGLE_F_LAYER,
 };
 
-// Используем настоящий слой MAC_F_LAYER вместо переменной
+
+/* docs/feature_rgb_matrix.md
+|Key                |Aliases   |Description                                                                           |
+|-------------------|----------|--------------------------------------------------------------------------------------|
+|`RGB_TOG`          |          |Toggle RGB lighting on or off                                                         |
+|`RGB_MODE_FORWARD` |`RGB_MOD` |Cycle through modes, reverse direction when Shift is held                             |
+|`RGB_MODE_REVERSE` |`RGB_RMOD`|Cycle through modes in reverse, forward direction when Shift is held                  |
+|`RGB_HUI`          |          |Increase hue, decrease hue when Shift is held                                         |
+|`RGB_HUD`          |          |Decrease hue, increase hue when Shift is held                                         |
+|`RGB_SAI`          |          |Increase saturation, decrease saturation when Shift is held                           |
+|`RGB_SAD`          |          |Decrease saturation, increase saturation when Shift is held                           |
+|`RGB_VAI`          |          |Increase value (brightness), decrease value when Shift is held                        |
+|`RGB_VAD`          |          |Decrease value (brightness), increase value when Shift is held                        |
+|`RGB_SPI`          |          |Increase effect speed (does not support eeprom yet), decrease speed when Shift is held|
+|`RGB_SPD`          |          |Decrease effect speed (does not support eeprom yet), increase speed when Shift is held|
+|-------------------|----------|--------------------------------------------------------------------------------------|
+*/
+
 // clang-format off
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     [MAC_BASE] = LAYOUT_ansi_90(
-        KC_ESC,             KC_BRID,  KC_BRIU,  KC_MCTRL, KC_LNPAD, RGB_VAD,  RGB_VAI,  KC_MPRV,  KC_MPLY,  KC_MNXT,  KC_MUTE,  KC_VOLD,  KC_VOLU,  MACRO5,   MACRO7,   MACRO6,
-        KC_GRV,   KC_1,     KC_2,     KC_3,     KC_4,     KC_5,     KC_6,     KC_7,     KC_8,     KC_9,     KC_0,     KC_MINS,  KC_EQL,   KC_BSPC,  MACRO15,  MACRO13,  MACRO14,
-        KC_TAB,   KC_Q,     KC_W,     KC_E,     KC_R,     KC_T,     KC_Y,     KC_U,     KC_I,     KC_O,     KC_P,     KC_LBRC,  KC_RBRC,  KC_BSLS,  KC_INS,   KC_HOME,  KC_PGUP,
-        KC_CAPS,  KC_A,     KC_S,     KC_D,     KC_F,     KC_G,     KC_H,     KC_J,     KC_K,     KC_L,     KC_SCLN,  KC_QUOT,            KC_ENT,   KC_DEL,   KC_END,   KC_PGDN,
-        KC_LSFT,            KC_Z,     KC_X,     KC_C,     KC_V,     KC_B,     KC_N,     KC_M,     KC_COMM,  KC_DOT,   KC_SLSH,            KC_RSFT,            KC_UP,
-        KC_LCTL,  KC_LOPTN, KC_LCMMD,                               KC_SPC,                                 KC_RCMMD, KC_ROPTN, MO(MAC_FN),KC_RCTL, KC_LEFT,  KC_DOWN,  KC_RGHT),
+        KC_ESC,             KC_BRID,  KC_BRIU,  KC_MCTRL, KC_LNPAD, RGB_VAD,  RGB_VAI,  KC_MPRV, KC_MPLY,       KC_MNXT,  KC_MUTE,  KC_VOLD,  KC_VOLU,  MACRO5,   MACRO7,   MACRO6,
+        KC_GRV,   KC_1,     KC_2,     KC_3,     KC_4,     KC_5,     KC_6,     KC_7,     KC_8,    KC_9,          KC_0,     KC_MINS,  KC_EQL,   KC_BSPC,  MACRO15,  MACRO13,  MACRO14,
+        KC_TAB,   KC_Q,     KC_W,     KC_E,     KC_R,     KC_T,     KC_Y,     KC_U,     KC_I,    KC_O,          KC_P,     KC_LBRC,  KC_RBRC,  KC_BSLS,  KC_INS,   KC_HOME,  KC_PGUP,
+        KC_CAPS,  KC_A,     KC_S,     KC_D,     KC_F,     KC_G,     KC_H,     KC_J,     KC_K,    KC_L,          KC_SCLN,  KC_QUOT,            KC_ENT,   KC_DEL,   KC_END,   KC_PGDN,
+        KC_LSFT,            KC_Z,     KC_X,     KC_C,     KC_V,     KC_B,     KC_N,     KC_M,    KC_COMM,       KC_DOT,   KC_SLSH,            KC_RSFT,            KC_UP,
+        KC_LCTL,  KC_LOPTN, KC_LCMMD,                               KC_SPC,                                     KC_RCMMD, KC_ROPTN, MO(MAC_FN),KC_RCTL, KC_LEFT,  KC_DOWN,  KC_RGHT),
 
     [MAC_FN] = LAYOUT_ansi_90(
-        _______,            _______,    _______, _______,  _______,    _______, _______, _______, _______,  _______, _______,   _______,   _______, KC_NUM,   XXXXXXX,  _______,
-        _______,  BT_HST1,  BT_HST2,  BT_HST3,  P2P4G,    _______,  _______,  _______,  _______,  _______,  _______,  _______,  _______,  _______,  _______,  _______,  _______,
-        RGB_TOG,  RGB_MOD,  RGB_VAI,  RGB_HUI,  RGB_SAI,  RGB_SPI,  _______,  _______,  _______,  _______,  _______,  _______,  _______,  _______,  _______,  _______,  _______,
-        _______,  RGB_RMOD, RGB_VAD,  RGB_HUD,  RGB_SAD,  RGB_SPD,  _______,  _______,  _______,  TOGGLE_F_LAYER, _______,  _______,      _______,  MACRO3,   _______,  MACRO4,
-        _______,            _______,  _______,  _______,  _______,  BAT_LVL,  NK_TOGG,  _______,  _______,  _______,  _______,            _______,            _______,
-        _______,  _______,  _______,                                _______,                                _______,  _______,  _______,  _______,     MACRO2,  MACRO0, MACRO1),
+        _______,            _______,  _______,  _______,  _______,  _______,  _______,  _______, _______,       _______,  _______,  _______,  _______,  KC_NUM,   XXXXXXX,  _______,
+        _______,  BT_HST1,  BT_HST2,  BT_HST3,  P2P4G,    _______,  _______,  _______,  _______, _______,       _______,  _______,  _______,  _______,  _______,  _______,  _______,
+        RGB_TOG,  RGB_MOD,  RGB_VAI,  RGB_HUI,  RGB_SAI,  RGB_SPI,  _______,  _______,  _______, _______,       _______,  _______,  _______,  _______,  _______,  _______,  _______,
+        _______,  RGB_RMOD, RGB_VAD,  RGB_HUD,  RGB_SAD,  RGB_SPD,  _______,  _______,  _______, TOGGLE_F_LAYER,_______,  _______,  _______,  MACRO3,   _______,  MACRO4,
+        _______,            _______,  _______,  _______,  _______,  BAT_LVL,  NK_TOGG,  _______, _______,       _______,  _______,            _______,            _______,
+        _______,  _______,  _______,                                _______,                                    _______,  _______,  _______,  _______,  MACRO2,   MACRO0,   MACRO1),
 
     [WIN_BASE] = LAYOUT_ansi_90(
-        KC_ESC,             KC_F1,    KC_F2,    KC_F3,    KC_F4,    KC_F5,    KC_F6,    KC_F7,    KC_F8,    KC_F9,    KC_F10,   KC_F11,   KC_F12,   XXXXXXX,  XXXXXXX,  XXXXXXX,
-        KC_GRV,   KC_1,     KC_2,     KC_3,     KC_4,     KC_5,     KC_6,     KC_7,     KC_8,     KC_9,     KC_0,     KC_MINS,  KC_EQL,   KC_BSPC,  XXXXXXX,  XXXXXXX,  XXXXXXX,
-        KC_TAB,   KC_Q,     KC_W,     KC_E,     KC_R,     KC_T,     KC_Y,     KC_U,     KC_I,     KC_O,     KC_P,     KC_LBRC,  KC_RBRC,  KC_BSLS,  KC_INS,   KC_HOME,  KC_PGUP,
-        KC_CAPS,  KC_A,     KC_S,     KC_D,     KC_F,     KC_G,     KC_H,     KC_J,     KC_K,     KC_L,     KC_SCLN,  KC_QUOT,            KC_ENT,   KC_DEL,   KC_END,   KC_PGDN,
-        KC_LSFT,            KC_Z,     KC_X,     KC_C,     KC_V,     KC_B,     KC_N,     KC_M,     KC_COMM,  KC_DOT,   KC_SLSH,            KC_RSFT,            KC_UP,
-        KC_LCTL,  KC_LWIN,  KC_LALT,                                KC_SPC,                                 KC_RALT,  KC_RGUI, MO(WIN_FN),KC_RCTL,  KC_LEFT,  KC_DOWN,  KC_RGHT),
+        KC_ESC,             KC_F1,    KC_F2,    KC_F3,    KC_F4,    KC_F5,    KC_F6,    KC_F7,   KC_F8,         KC_F9,    KC_F10,   KC_F11,   KC_F12,   XXXXXXX,  XXXXXXX,  XXXXXXX,
+        KC_GRV,   KC_1,     KC_2,     KC_3,     KC_4,     KC_5,     KC_6,     KC_7,     KC_8,    KC_9,          KC_0,     KC_MINS,  KC_EQL,   KC_BSPC,  XXXXXXX,  XXXXXXX,  XXXXXXX,
+        KC_TAB,   KC_Q,     KC_W,     KC_E,     KC_R,     KC_T,     KC_Y,     KC_U,     KC_I,    KC_O,          KC_P,     KC_LBRC,  KC_RBRC,  KC_BSLS,  KC_INS,   KC_HOME,  KC_PGUP,
+        KC_CAPS,  KC_A,     KC_S,     KC_D,     KC_F,     KC_G,     KC_H,     KC_J,     KC_K,    KC_L,          KC_SCLN,  KC_QUOT,            KC_ENT,   KC_DEL,   KC_END,   KC_PGDN,
+        KC_LSFT,            KC_Z,     KC_X,     KC_C,     KC_V,     KC_B,     KC_N,     KC_M,    KC_COMM,       KC_DOT,   KC_SLSH,            KC_RSFT,            KC_UP,
+        KC_LCTL,  KC_LWIN,  KC_LALT,                                KC_SPC,                                     KC_RALT,  KC_RGUI, MO(WIN_FN),KC_RCTL,  KC_LEFT,  KC_DOWN,  KC_RGHT),
 
     [WIN_FN] = LAYOUT_ansi_90(
-        _______,            KC_BRID,  KC_BRIU,  KC_TASK,  KC_FILE,  RGB_VAD,  RGB_VAI,  KC_MPRV,  KC_MPLY,  KC_MNXT,  KC_MUTE,  KC_VOLD,  KC_VOLU,  _______,  _______,  _______,
-        _______,  BT_HST1,  BT_HST2,  BT_HST3,  P2P4G,    _______,  _______,  _______,  _______,  _______,  _______,  _______,  _______,  _______,  _______,  _______,  _______,
-        RGB_TOG,  RGB_MOD,  RGB_VAI,  RGB_HUI,  RGB_SAI,  RGB_SPI,  _______,  _______,  _______,  _______,  _______,  _______,  _______,  _______,  _______,  _______,  _______,
-        _______,  RGB_RMOD, RGB_VAD,  RGB_HUD,  RGB_SAD,  RGB_SPD,  _______,  _______,  _______,  _______,  _______,  _______,            _______,  KC_NUM,   _______,  _______,
-        _______,            _______,  _______,  _______,  _______,  BAT_LVL,  NK_TOGG,  _______,  _______,  _______,  _______,            _______,            _______,
-        _______,  _______,  _______,                                _______,                                _______,  _______,  _______,  _______,  _______,  _______,  _______),
+        _______,            KC_BRID,  KC_BRIU,  KC_TASK,  KC_FILE,  RGB_VAD,  RGB_VAI,  KC_MPRV, KC_MPLY,       KC_MNXT,  KC_MUTE,  KC_VOLD,  KC_VOLU,  _______,  _______,  _______,
+        _______,  BT_HST1,  BT_HST2,  BT_HST3,  P2P4G,    _______,  _______,  _______,  _______, _______,       _______,  _______,  _______,  _______,  _______,  _______,  _______,
+        RGB_TOG,  RGB_MOD,  RGB_VAI,  RGB_HUI,  RGB_SAI,  RGB_SPI,  _______,  _______,  _______, _______,       _______,  _______,  _______,  _______,  _______,  _______,  _______,
+        _______,  RGB_RMOD, RGB_VAD,  RGB_HUD,  RGB_SAD,  RGB_SPD,  _______,  _______,  _______, _______,       _______,  _______,            _______,  KC_NUM,   _______,  _______,
+        _______,            _______,  _______,  _______,  _______,  BAT_LVL,  NK_TOGG,  _______, _______,       _______,  _______,            _______,            _______,
+        _______,  _______,  _______,                                _______,                                    _______,  _______,  _______,  _______,  _______,  _______,  _______),
 
     // MAC_F_LAYER - прозрачный, кроме F1-F12
     [MAC_F_LAYER] = LAYOUT_ansi_90(
-        _______,             KC_F1,    KC_F2,    KC_F3,    KC_F4,    KC_F5,    KC_F6,    KC_F7,    KC_F8,    KC_F9,    KC_F10,   KC_F11,   KC_F12,   _______,   _______,   _______,
-        _______,   _______,     _______,     _______,     _______,     _______,     _______,     _______,     _______,     _______,     _______,     _______,  _______,   _______,  _______,  _______,  _______,
-        _______,   _______,     _______,     _______,     _______,     _______,     _______,     _______,     _______,     _______,     _______,     _______,  _______,  _______,  _______,   _______,  _______,
-        _______,  _______,     _______,     _______,     _______,     _______,     _______,     _______,     _______,     _______,     _______,  _______,            _______,   _______,   _______,   _______,
-        _______,            _______,     _______,     _______,     _______,     _______,     _______,     _______,     _______,  _______,   _______,            _______,            _______,
-        _______,  _______, _______,                               _______,                                 _______, _______, _______,_______, _______,  _______,  _______)
+        _______,             KC_F1,    KC_F2,    KC_F3,    KC_F4,    KC_F5,    KC_F6,    KC_F7,   KC_F8,         KC_F9,    KC_F10,   KC_F11,   KC_F12,   _______,  _______,  _______,
+        _______,  _______,   _______,  _______, _______,  _______,   _______, _______,   _______, _______,       _______,  _______,  _______,  _______,  _______,  _______,  _______,
+        _______,  _______,   _______,  _______, _______,  _______,   _______, _______,   _______, _______,       _______,  _______,  _______,  _______,  _______,  _______,  _______,
+        _______,  _______,   _______,  _______, _______,  _______,   _______, _______,   _______, _______,       _______,  _______,            _______,  _______,  _______,  _______,
+        _______,             _______,  _______, _______,  _______,   _______, _______,   _______, _______,       _______,  _______,            _______,            _______,
+        _______,  _______,   _______,                                _______,                                    _______,  _______,  _______,  _______,  _______,  _______,  _______)
 };
-
 // clang-format on
+//
 // Вызывается при каждом изменении состояния слоев
 layer_state_t layer_state_set_user(layer_state_t state) {
     // Проверяем активацию/деактивацию MAC_FN
@@ -143,15 +161,27 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
         // Для MAC_FN подсвечиваем клавиши, которые меняют своё назначение
         uint8_t fn_layer = layer_state_is(MAC_FN) ? MAC_FN : WIN_FN;
 
-        // Подсветить только клавиши, которые изменяют своё назначение
+        // --- Пульсация по яркости только для нужных клавиш ---
+        uint32_t t = timer_read();
+        // Период пульсации (мс)
+        const uint16_t period = 900;
+        float phase = (float)(t % period) / (float)period;
+        // Синусоидальная пульсация между min_val и max_val
+        uint8_t min_val = 80, max_val = 255;
+        float val_f = min_val + (max_val - min_val) * 0.5f * (1.0f + sinf(phase * 2.0f * 3.1415926f));
+        uint8_t val = (uint8_t)val_f;
+
         for (uint8_t row = 0; row < MATRIX_ROWS; ++row) {
             for (uint8_t col = 0; col < MATRIX_COLS; ++col) {
                 if (is_key_modified_in_layer(row, col, base_layer, fn_layer)) {
                     uint8_t index = g_led_config.matrix_co[row][col];
-
-                    // Если светодиод существует и находится в пределах обрабатываемого диапазона
+                     // Если светодиод существует и находится в пределах обрабатываемого диапазона
                     if (index != NO_LED && index >= led_min && index < led_max) {
-                        rgb_matrix_set_color(index, RGB_CYAN); // Подсветить активные клавиши бирюзовым цветом
+                        // Бирюзовый HSV: h=128~180, s=255, v=val
+                        // Используем стандартную функцию для HSV->RGB
+                        HSV hsv = {128, 255, val};
+                        RGB rgb = hsv_to_rgb(hsv);
+                        rgb_matrix_set_color(index, rgb.r, rgb.g, rgb.b);
                     }
                 }
             }
