@@ -16,7 +16,7 @@
 
 #include QMK_KEYBOARD_H
 #include "keychron_common.h"
-#include <math.h>
+#include <lib/lib8tion/lib8tion.h>
 
 enum layers {
     MAC_BASE,
@@ -150,38 +150,52 @@ void highlight_f_keys(uint8_t led_min, uint8_t led_max, uint8_t r, uint8_t g, ui
 
 // RGB индикация для активных слоев
 bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
-    uint8_t base_layer = layer_state & (1UL << 1) ? MAC_BASE : WIN_BASE;
+    uint8_t current_val = rgb_matrix_get_val(); // Глобальная яркость подсветки
+    uint8_t current_sat = rgb_matrix_get_sat(); // Глобальная насыщенность подсветки
 
-    // Если активен F-Layer для macOS, подсвечиваем F-клавиши бирюзовым
-    if (layer_state_is(MAC_F_LAYER)) {
-        highlight_f_keys(led_min, led_max, RGB_CYAN);
+    // Если подсветка выключена, ничего не делаем
+    if (current_val == 0) {
+        return false;
     }
 
+    uint8_t base_layer = layer_state & (1UL << 1) ? MAC_BASE : WIN_BASE;
+    // uint8_t base_layer = IS_LAYER_ON(WIN_BASE) ? WIN_BASE : MAC_BASE; // Нагляднее, но чёт не работает, надо проверить
+
+    // --- Анимация пульсации ---
+    // timer_read() возвращает миллисекунды. Сдвиг вправо замедляет анимацию.
+    // sin8(t) возвращает значение от 0 до 255 (из LUT), описывающее полную синусоиду.
+    uint8_t sin_wave = sin8(timer_read() >> 2);
+
+    // Максимум - текущая яркость, минимум - треть от нее.
+    uint8_t max_v = current_val;
+    uint8_t min_v = max_v / 3;
+
+    // scale8 - быстрая 8-битная функция умножения (a * b) / 255.
+    // Масштабируем синусоиду (0-255) до нашего диапазона (0 - (max_v - min_v)) и прибавляем смещение min_v.
+    uint8_t pulsing_val = min_v + scale8(sin_wave, max_v - min_v);
+    // Если активен F-Layer для macOS, подсвечиваем F-клавиши бирюзовым (статично)
+    if (layer_state_is(MAC_F_LAYER)) {
+        HSV hsv = {128, current_sat, current_val}; // H=128 (Cyan), S и V - глобальные
+        RGB rgb = hsv_to_rgb(hsv);
+        highlight_f_keys(led_min, led_max, rgb.r, rgb.g, rgb.b);
+    }
     // Если активен функциональный слой (MAC_FN или WIN_FN)
     if (layer_state_is(MAC_FN) || layer_state_is(WIN_FN)) {
-        // Для MAC_FN подсвечиваем клавиши, которые меняют своё назначение
         uint8_t fn_layer = layer_state_is(MAC_FN) ? MAC_FN : WIN_FN;
-
-        // --- Пульсация по яркости только для нужных клавиш ---
-        uint32_t t = timer_read();
-        // Период пульсации (мс)
-        const uint16_t period = 900;
-        float phase = (float)(t % period) / (float)period;
-        // Синусоидальная пульсация между min_val и max_val
-        uint8_t min_val = 80, max_val = 255;
-        float val_f = min_val + (max_val - min_val) * 0.5f * (1.0f + sinf(phase * 2.0f * 3.1415926f));
-        uint8_t val = (uint8_t)val_f;
+        // Готовим пульсирующий цвет
+        HSV hsv = {128, current_sat, pulsing_val}; // H=128 (Cyan), S - глобальная, V - пульсирует
+        RGB rgb = hsv_to_rgb(hsv);
 
         for (uint8_t row = 0; row < MATRIX_ROWS; ++row) {
             for (uint8_t col = 0; col < MATRIX_COLS; ++col) {
                 if (is_key_modified_in_layer(row, col, base_layer, fn_layer)) {
                     uint8_t index = g_led_config.matrix_co[row][col];
-                     // Если светодиод существует и находится в пределах обрабатываемого диапазона
                     if (index != NO_LED && index >= led_min && index < led_max) {
-                        // Бирюзовый HSV: h=128~180, s=255, v=val
-                        // Используем стандартную функцию для HSV->RGB
-                        HSV hsv = {128, 255, val};
-                        RGB rgb = hsv_to_rgb(hsv);
+                        // Исключаем F-клавиши, если F-слой уже их подсветил
+                        uint16_t keycode = keymap_key_to_keycode(MAC_F_LAYER, (keypos_t){col, row});
+                        if (layer_state_is(MAC_F_LAYER) && (keycode >= KC_F1 && keycode <= KC_F12)) {
+                           continue; // Эти уже обработаны выше
+                        }
                         rgb_matrix_set_color(index, rgb.r, rgb.g, rgb.b);
                     }
                 }
