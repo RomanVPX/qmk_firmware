@@ -26,7 +26,6 @@ enum layers {
     MAC_F_LAYER,  // Слой для клавиш F1-F12 в macOS
 };
 
-// Пользовательские макросы
 enum custom_keycodes {
     MACRO0 = SAFE_RANGE,
     MACRO1,
@@ -106,6 +105,8 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 };
 // clang-format on
 
+#define IS_F_KEYCODE(keycode) ((keycode) >= KC_F1 && (keycode) <= KC_F12)
+
 // Вызывается при каждом изменении состояния слоев
 layer_state_t layer_state_set_user(layer_state_t state) {
     // Проверяем активацию/деактивацию MAC_FN
@@ -137,7 +138,7 @@ void highlight_f_keys(uint8_t led_min, uint8_t led_max, uint8_t r, uint8_t g, ui
     for (uint8_t row = 0; row < MATRIX_ROWS; ++row) {
         for (uint8_t col = 0; col < MATRIX_COLS; ++col) {
             uint16_t keycode = keymap_key_to_keycode(MAC_F_LAYER, (keypos_t){col, row});
-            if (keycode >= KC_F1 && keycode <= KC_F12) {
+            if (IS_F_KEYCODE(keycode)) {
                 uint8_t index = g_led_config.matrix_co[row][col];
                 if (index != NO_LED && index >= led_min && index < led_max) {
                     rgb_matrix_set_color(index, r, g, b);
@@ -161,17 +162,14 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
     // uint8_t base_layer = IS_LAYER_ON(WIN_BASE) ? WIN_BASE : MAC_BASE; // Нагляднее, но чёт не работает, надо проверить
 
     // --- Анимация пульсации ---
-    // timer_read() возвращает миллисекунды. Сдвиг вправо замедляет анимацию.
     // sin8(t) возвращает значение от 0 до 255 (из LUT), описывающее полную синусоиду.
-    uint8_t sin_wave = sin8(timer_read() >> 2);
-
-    // Максимум - текущая яркость, минимум - треть от нее.
-    uint8_t max_v = current_val;
-    uint8_t min_v = max_v / 3;
-
-    // scale8 - быстрая 8-битная функция умножения (a * b) / 255.
+    uint8_t sin_wave = sin8(timer_read() >> 4); // timer_read() возвращает миллисекунды. Сдвиг вправо замедляет анимацию.
+    uint8_t max_v = current_val; // Максимум - текущая яркость, минимум - треть от нее.
+    uint8_t min_v = max_v / 2; // Минимум — половина от максимума яркости
     // Масштабируем синусоиду (0-255) до нашего диапазона (0 - (max_v - min_v)) и прибавляем смещение min_v.
-    uint8_t pulsing_val = min_v + scale8(sin_wave, max_v - min_v);
+    uint8_t pulsing_val = min_v + scale8(sin_wave, max_v - min_v); // scale8 - быстрая 8-битная функция умножения (a * b) / 255.
+
+
     // Если активен F-Layer для macOS, подсвечиваем F-клавиши бирюзовым (статично)
     if (layer_state_is(MAC_F_LAYER)) {
         HSV hsv = {128, current_sat, current_val}; // H=128 (Cyan), S и V - глобальные
@@ -192,7 +190,7 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
                     if (index != NO_LED && index >= led_min && index < led_max) {
                         // Исключаем F-клавиши, если F-слой уже их подсветил
                         uint16_t keycode = keymap_key_to_keycode(MAC_F_LAYER, (keypos_t){col, row});
-                        if (layer_state_is(MAC_F_LAYER) && (keycode >= KC_F1 && keycode <= KC_F12)) {
+                        if (layer_state_is(MAC_F_LAYER) && (IS_F_KEYCODE(keycode))) {
                            continue; // Эти уже обработаны выше
                         }
                         rgb_matrix_set_color(index, rgb.r, rgb.g, rgb.b);
