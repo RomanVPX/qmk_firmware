@@ -169,6 +169,14 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
     // Масштабируем синусоиду (0-255) до нашего диапазона (0 - (max_v - min_v)) и прибавляем смещение min_v.
     uint8_t pulsing_val = min_v + scale8(sin_wave, max_v - min_v); // scale8 - быстрая 8-битная функция умножения (a * b) / 255.
 
+    // --- Готовим наши цвета ---
+    HSV hsv_static_cyan = {128, current_sat, current_val};
+    RGB rgb_static_cyan = hsv_to_rgb(hsv_static_cyan);
+
+    HSV hsv_pulsing_cyan = {128, current_sat, pulsing_val};
+    RGB rgb_pulsing_cyan = hsv_to_rgb(hsv_pulsing_cyan);
+
+
 
     // Если активен F-Layer для macOS, подсвечиваем F-клавиши бирюзовым (статично)
     if (layer_state_is(MAC_F_LAYER)) {
@@ -176,29 +184,58 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
         RGB rgb = hsv_to_rgb(hsv);
         highlight_f_keys(led_min, led_max, rgb.r, rgb.g, rgb.b);
     }
-    // Если активен функциональный слой (MAC_FN или WIN_FN)
+
+    // 1. Подсветка F-клавиш, когда MAC_F_LAYER активен
+    if (layer_state_is(MAC_F_LAYER)) {
+        for (uint8_t row = 0; row < MATRIX_ROWS; ++row) {
+            for (uint8_t col = 0; col < MATRIX_COLS; ++col) {
+                uint16_t keycode = keymap_key_to_keycode(MAC_F_LAYER, (keypos_t){col, row});
+                if (IS_F_KEYCODE(keycode)) {
+                    uint8_t index = g_led_config.matrix_co[row][col];
+                    if (index != NO_LED && index >= led_min && index < led_max) {
+                        // Анимация ТОЛЬКО в режиме Mac
+                        if (base_layer == MAC_BASE) {
+                            rgb_matrix_set_color(index, rgb_pulsing_cyan.r, rgb_pulsing_cyan.g, rgb_pulsing_cyan.b);
+                        } else {
+                            rgb_matrix_set_color(index, rgb_static_cyan.r, rgb_static_cyan.g, rgb_static_cyan.b);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // 2. Подсветка измененных клавиш на FN слое
     if (layer_state_is(MAC_FN) || layer_state_is(WIN_FN)) {
         uint8_t fn_layer = layer_state_is(MAC_FN) ? MAC_FN : WIN_FN;
-        // Готовим пульсирующий цвет
-        HSV hsv = {128, current_sat, pulsing_val}; // H=128 (Cyan), S - глобальная, V - пульсирует
-        RGB rgb = hsv_to_rgb(hsv);
 
         for (uint8_t row = 0; row < MATRIX_ROWS; ++row) {
             for (uint8_t col = 0; col < MATRIX_COLS; ++col) {
                 if (is_key_modified_in_layer(row, col, base_layer, fn_layer)) {
                     uint8_t index = g_led_config.matrix_co[row][col];
                     if (index != NO_LED && index >= led_min && index < led_max) {
-                        // Исключаем F-клавиши, если F-слой уже их подсветил
-                        uint16_t keycode = keymap_key_to_keycode(MAC_F_LAYER, (keypos_t){col, row});
-                        if (layer_state_is(MAC_F_LAYER) && (IS_F_KEYCODE(keycode))) {
-                           continue; // Эти уже обработаны выше
+                        // Пропускаем F-клавиши, они уже обработаны выше
+                        uint16_t f_layer_keycode = keymap_key_to_keycode(MAC_F_LAYER, (keypos_t){col, row});
+                        if (layer_state_is(MAC_F_LAYER) && IS_F_KEYCODE(f_layer_keycode)) {
+                           continue;
                         }
-                        rgb_matrix_set_color(index, rgb.r, rgb.g, rgb.b);
+
+                        // Получаем кейкод на FN-слое, чтобы найти нашу 'L' (TOGGLE_F_LAYER)
+                        uint16_t fn_keycode = keymap_key_to_keycode(fn_layer, (keypos_t){col, row});
+
+                        // Анимация для TOGGLE_F_LAYER и только в режиме Mac
+                        if (fn_keycode == TOGGLE_F_LAYER && base_layer == MAC_BASE) {
+                             rgb_matrix_set_color(index, rgb_pulsing_cyan.r, rgb_pulsing_cyan.g, rgb_pulsing_cyan.b);
+                        } else {
+                             // Все остальные измененные клавиши подсвечиваем статично
+                             rgb_matrix_set_color(index, rgb_static_cyan.r, rgb_static_cyan.g, rgb_static_cyan.b);
+                        }
                     }
                 }
             }
         }
     }
+
     return false;
 }
 
