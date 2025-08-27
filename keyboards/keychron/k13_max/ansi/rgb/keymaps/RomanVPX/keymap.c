@@ -33,23 +33,23 @@ enum custom_keycodes {
 };
 
 
-/* docs/feature_rgb_matrix.md
-|Key                |Aliases   |Description                                                                           |
-|-------------------|----------|--------------------------------------------------------------------------------------|
-|`RGB_TOG`          |          |Toggle RGB lighting on or off                                                         |
-|`RGB_MODE_FORWARD` |`RGB_MOD` |Cycle through modes, reverse direction when Shift is held                             |
-|`RGB_MODE_REVERSE` |`RGB_RMOD`|Cycle through modes in reverse, forward direction when Shift is held                  |
-|`RGB_HUI`          |          |Increase hue, decrease hue when Shift is held                                         |
-|`RGB_HUD`          |          |Decrease hue, increase hue when Shift is held                                         |
-|`RGB_SAI`          |          |Increase saturation, decrease saturation when Shift is held                           |
-|`RGB_SAD`          |          |Decrease saturation, increase saturation when Shift is held                           |
-|`RGB_VAI`          |          |Increase value (brightness), decrease value when Shift is held                        |
-|`RGB_VAD`          |          |Decrease value (brightness), increase value when Shift is held                        |
-|`RGB_SPI`          |          |Increase effect speed (does not support eeprom yet), decrease speed when Shift is held|
-|`RGB_SPD`          |          |Decrease effect speed (does not support eeprom yet), increase speed when Shift is held|
-|`KC_NO`            |'XXXXXXX' |Ignore this key                                                                       |
-|-------------------|----------|--------------------------------------------------------------------------------------|
-*/
+/*|docs/feature_rgb_matrix.md
+ *|Key                |Aliases   |Description                                                                           |
+ *|-------------------|----------|--------------------------------------------------------------------------------------|
+ *|`RGB_TOG`          |          |Toggle RGB lighting on or off                                                         |
+ *|`RGB_MODE_FORWARD` |`RGB_MOD` |Cycle through modes, reverse direction when Shift is held                             |
+ *|`RGB_MODE_REVERSE` |`RGB_RMOD`|Cycle through modes in reverse, forward direction when Shift is held                  |
+ *|`RGB_HUI`          |          |Increase hue, decrease hue when Shift is held                                         |
+ *|`RGB_HUD`          |          |Decrease hue, increase hue when Shift is held                                         |
+ *|`RGB_SAI`          |          |Increase saturation, decrease saturation when Shift is held                           |
+ *|`RGB_SAD`          |          |Decrease saturation, increase saturation when Shift is held                           |
+ *|`RGB_VAI`          |          |Increase value (brightness), decrease value when Shift is held                        |
+ *|`RGB_VAD`          |          |Decrease value (brightness), increase value when Shift is held                        |
+ *|`RGB_SPI`          |          |Increase effect speed (does not support eeprom yet), decrease speed when Shift is held|
+ *|`RGB_SPD`          |          |Decrease effect speed (does not support eeprom yet), increase speed when Shift is held|
+ *|`KC_NO`            |'XXXXXXX' |Ignore this key                                                                       |
+ *|-------------------|----------|--------------------------------------------------------------------------------------|
+ */
 
 #define HYP_C       HYPR(KC_C)
 #define HYP_N       HYPR(KC_N)
@@ -148,20 +148,53 @@ void highlight_f_keys(uint8_t led_min, uint8_t led_max, uint8_t r, uint8_t g, ui
     }
 }
 
+static inline void handle_mac_lighting(uint8_t row, uint8_t col, uint8_t index, const RGB* static_color, const RGB* pulsing_color, const RGB* antiphase_color) {
+    uint16_t f_layer_keycode = keymap_key_to_keycode(MAC_F_LAYER, (keypos_t){col, row});
+    uint16_t fn_keycode      = keymap_key_to_keycode(MAC_FN, (keypos_t){col, row});
+
+    if (IS_F_KEYCODE(f_layer_keycode)) { // Это F-клавиша?
+        if (layer_state_is(MAC_F_LAYER)) {
+            if (layer_state_is(MAC_FN)) { // Изначально ВЫКЛ, Fn зажата
+                rgb_matrix_set_color(index, pulsing_color->r, pulsing_color->g, pulsing_color->b);
+            } else { // Изначально ВКЛ, Fn НЕ зажата
+                rgb_matrix_set_color(index, static_color->r, static_color->g, static_color->b);
+            }
+        } else if (layer_state_is(MAC_FN)) { // Изначально ВКЛ, Fn зажата
+            rgb_matrix_set_color(index, antiphase_color->r, antiphase_color->g, antiphase_color->b);
+        }
+        return; // F-клавиша обработана, дальше не идем
+    }
+
+    if (layer_state_is(MAC_FN) && fn_keycode == TOGGLE_F_LAYER) { // Это TOGGLE_F_LAYER?
+        rgb_matrix_set_color(index, pulsing_color->r, pulsing_color->g, pulsing_color->b);
+        return; // Клавиша обработана
+    }
+
+    if (layer_state_is(MAC_FN) && is_key_modified_in_layer(row, col, MAC_BASE, MAC_FN)) { // Это другая измененная клавиша на MAC_FN?
+        rgb_matrix_set_color(index, static_color->r, static_color->g, static_color->b);
+    }
+}
+
+static inline void handle_win_lighting(uint8_t row, uint8_t col, uint8_t index, const RGB* static_color) {
+    if (layer_state_is(WIN_FN) && is_key_modified_in_layer(row, col, WIN_BASE, WIN_FN)) {
+        rgb_matrix_set_color(index, static_color->r, static_color->g, static_color->b);
+    }
+}
+
 // RGB индикация для активных слоев
+#define INDICATOR_COLOR_HSV (HSV){HSV_CYAN}
+
 bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
     uint8_t current_val = rgb_matrix_get_val();
     uint8_t current_sat = rgb_matrix_get_sat();
     if (current_val == 0) return false;
 
     uint8_t base_layer;
-    if (layer_state_is(MAC_FN) || layer_state_is(WIN_FN)) { // Если Fn зажата, используем работающий хак
-        base_layer = layer_state & (1UL << MAC_FN) ? MAC_BASE : WIN_BASE;
-        // base_layer = layer_state_is(MAC_FN) ? MAC_BASE : WIN_BASE;
-    } else { // Если Fn НЕ зажата, используем стандартный и надежный метод
+    if (layer_state_is(MAC_FN) || layer_state_is(WIN_FN)) { // Если Fn зажата, используем работающий хак:
+        base_layer = layer_state & (1UL << MAC_FN) ? MAC_BASE : WIN_BASE; // base_layer = layer_state_is(MAC_FN) ? MAC_BASE : WIN_BASE;
+    } else { // Если Fn НЕ зажата, используем стандартный метод:
         base_layer = IS_LAYER_ON(WIN_BASE) ? WIN_BASE : MAC_BASE;
     }
-
     // --- Анимация и цвета ---
     uint8_t sin_wave = sin8(timer_read() >> 3); // timer_read() возвращает миллисекунды. Сдвиг вправо замедляет анимацию.
     uint8_t antiphase_sin_wave = 255 - sin_wave;
@@ -170,44 +203,19 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
     uint8_t pulsing_val = min_v + scale8(sin_wave, max_v - min_v); // scale8 — быстрая 8-битная функция умножения (a * b) / 255.
     uint8_t antiphase_pulsing_val = min_v + scale8(antiphase_sin_wave, max_v - min_v);
 
-    RGB rgb_static_cyan = hsv_to_rgb((HSV){128, current_sat, current_val});
-    RGB rgb_pulsing_cyan = hsv_to_rgb((HSV){128, current_sat, pulsing_val});
-    RGB rgb_antiphase_pulsing_cyan = hsv_to_rgb((HSV){128, current_sat, antiphase_pulsing_val});
+    HSV hsv_static = INDICATOR_COLOR_HSV;
+    RGB rgb_static_cyan = hsv_to_rgb((HSV){hsv_static.h, current_sat, current_val});
+    RGB rgb_pulsing_cyan = hsv_to_rgb((HSV){hsv_static.h, current_sat, pulsing_val});
+    RGB rgb_antiphase_pulsing_cyan = hsv_to_rgb((HSV){hsv_static.h, current_sat, antiphase_pulsing_val});
 
     for (uint8_t row = 0; row < MATRIX_ROWS; ++row) {
         for (uint8_t col = 0; col < MATRIX_COLS; ++col) {
             uint8_t index = g_led_config.matrix_co[row][col];
             if (index == NO_LED || index < led_min || index >= led_max) { continue; }
-
-            if (base_layer == MAC_BASE) { // --- Логика для режима MAC ---
-                uint16_t f_layer_keycode = keymap_key_to_keycode(MAC_F_LAYER, (keypos_t){col, row});
-                uint16_t fn_keycode = keymap_key_to_keycode(MAC_FN, (keypos_t){col, row});
-
-                if (IS_F_KEYCODE(f_layer_keycode)) { // Это F-клавиша?
-                    if (layer_state_is(MAC_F_LAYER)) {
-                        if (layer_state_is(MAC_FN)) { // Изначально ВЫКЛ, Fn зажата
-                            rgb_matrix_set_color(index, rgb_pulsing_cyan.r, rgb_pulsing_cyan.g, rgb_pulsing_cyan.b);
-                        } else { // Изначально ВКЛ, Fn НЕ зажата
-                            rgb_matrix_set_color(index, rgb_static_cyan.r, rgb_static_cyan.g, rgb_static_cyan.b);
-                        }
-                    } else if (layer_state_is(MAC_FN)) { // Изначально ВКЛ, Fn зажата
-                        rgb_matrix_set_color(index, rgb_antiphase_pulsing_cyan.r, rgb_antiphase_pulsing_cyan.g, rgb_antiphase_pulsing_cyan.b);
-                    }
-                    continue; // F-клавиша обработана, дальше не идем
-                }
-
-                if (layer_state_is(MAC_FN) && fn_keycode == TOGGLE_F_LAYER) { // Это TOGGLE_F_LAYER?
-                    rgb_matrix_set_color(index, rgb_pulsing_cyan.r, rgb_pulsing_cyan.g, rgb_pulsing_cyan.b);
-                    continue; // Клавиша обработана
-                }
-
-                if (layer_state_is(MAC_FN) && is_key_modified_in_layer(row, col, MAC_BASE, MAC_FN)) { // Это другая измененная клавиша на MAC_FN?
-                    rgb_matrix_set_color(index, rgb_static_cyan.r, rgb_static_cyan.g, rgb_static_cyan.b);
-                }
-            } else { // --- Логика для режима WINDOWS ---
-                if (layer_state_is(WIN_FN) && is_key_modified_in_layer(row, col, WIN_BASE, WIN_FN)) {
-                    rgb_matrix_set_color(index, rgb_static_cyan.r, rgb_static_cyan.g, rgb_static_cyan.b);
-                }
+            if (base_layer == MAC_BASE) {
+                handle_mac_lighting(row, col, index, &rgb_static_cyan, &rgb_pulsing_cyan, &rgb_antiphase_pulsing_cyan);
+            } else {
+                handle_win_lighting(row, col, index, &rgb_static_cyan);
             }
         }
     }
