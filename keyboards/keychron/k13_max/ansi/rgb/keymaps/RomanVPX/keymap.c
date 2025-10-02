@@ -29,6 +29,7 @@ enum layers {
 enum custom_keycodes {
     MACRO0 = SAFE_RANGE,
     MACRO1,
+    MACRO2,
     TOGGLE_F_LAYER,
 };
 
@@ -47,6 +48,7 @@ enum custom_keycodes {
  *|`RGB_VAD`          |          |Decrease value (brightness), increase value when Shift is held                        |
  *|`RGB_SPI`          |          |Increase effect speed (does not support eeprom yet), decrease speed when Shift is held|
  *|`RGB_SPD`          |          |Decrease effect speed (does not support eeprom yet), increase speed when Shift is held|
+ *|`QK_BOOTLOADER`    |`QK_BOOT` |Put the keyboard into bootloader mode for flashing                                    |
  *|`KC_NO`            |'XXXXXXX' |Ignore this key                                                                       |
  *|-------------------|----------|--------------------------------------------------------------------------------------|
  */
@@ -72,9 +74,9 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 
     [MAC_FN] = LAYOUT_ansi_90(
         _______,            _______,  _______,  _______,  _______,  _______,  _______,  _______,    _______,     _______,  _______,  _______,   _______, KC_NUM,   XXXXXXX,  _______,
-        _______,  BT_HST1,  BT_HST2,  BT_HST3,  P2P4G,    _______,  _______,  _______,  _______,    _______,     _______,  _______,  _______,   _______, _______,  _______,  _______,
-        RGB_TOG,  RGB_MOD,  RGB_VAI,  RGB_HUI,  RGB_SAI,  RGB_SPI,  _______,  _______,  _______,    _______,     _______,  _______,  _______,   _______, _______,  _______,  _______,
-        QK_BOOT,  RGB_RMOD, RGB_VAD,  RGB_HUD,  RGB_SAD,  RGB_SPD,  _______,  _______,  _______, TOGGLE_F_LAYER, _______,  _______,  _______,   HYP_P1,  _______,  HYP_P3,
+        _______,  BT_HST1,  BT_HST2,  BT_HST3,  P2P4G,    _______,  _______,  _______,  _______,    _______,     _______,  _______,  _______,   _______, _______,  MACRO2,   _______,
+        RGB_TOG,  RGB_MOD,  _______,  RGB_HUI,  RGB_SAI,  RGB_SPI,  _______,  _______,  _______,    _______,     _______,  _______,  _______,   _______, _______,  _______,  _______,
+        QK_BOOT,  RGB_RMOD, _______,  RGB_HUD,  RGB_SAD,  RGB_SPD,  _______,  _______,  _______, TOGGLE_F_LAYER, _______,  _______,  _______,   HYP_P1,  _______,  HYP_P3,
         _______,            _______,  _______,  _______,  _______,  BAT_LVL,  NK_TOGG,  _______,    _______,     _______,  _______,             _______, _______,
         _______,  _______,  _______,                                _______,                                     _______,  _______,  _______,   _______, HYP_LEFT, HYP_DOWN, HYP_RGHT),
 
@@ -89,8 +91,8 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     [WIN_FN] = LAYOUT_ansi_90(
         _______,            KC_BRID,  KC_BRIU,  KC_TASK,  KC_FILE,  RGB_VAD,  RGB_VAI,  KC_MPRV,    KC_MPLY,     KC_MNXT,  KC_MUTE,  KC_VOLD,   KC_VOLU,  _______,  _______, _______,
         _______,  BT_HST1,  BT_HST2,  BT_HST3,  P2P4G,    _______,  _______,  _______,  _______,    _______,     _______,  _______,  _______,   _______,  _______,  _______, _______,
-        RGB_TOG,  RGB_MOD,  RGB_VAI,  RGB_HUI,  RGB_SAI,  RGB_SPI,  _______,  _______,  _______,    _______,     _______,  _______,  _______,   _______,  _______,  _______, _______,
-        QK_BOOT,  RGB_RMOD, RGB_VAD,  RGB_HUD,  RGB_SAD,  RGB_SPD,  _______,  _______,  _______,    _______,     _______,  _______,             _______,  KC_NUM,   _______, _______,
+        RGB_TOG,  RGB_MOD,  _______,  RGB_HUI,  RGB_SAI,  RGB_SPI,  _______,  _______,  _______,    _______,     _______,  _______,  _______,   _______,  _______,  _______, _______,
+        QK_BOOT,  RGB_RMOD, _______,  RGB_HUD,  RGB_SAD,  RGB_SPD,  _______,  _______,  _______,    _______,     _______,  _______,             _______,  KC_NUM,   _______, _______,
         _______,            _______,  _______,  _______,  _______,  BAT_LVL,  NK_TOGG,  _______,    _______,     _______,  _______,             _______,            _______,
         _______,  _______,  _______,                                _______,                                     _______,  _______,  _______,   _______,  _______,  _______, _______),
 
@@ -148,7 +150,7 @@ void highlight_f_keys(uint8_t led_min, uint8_t led_max, uint8_t r, uint8_t g, ui
     }
 }
 
-static inline void handle_mac_lighting(uint8_t row, uint8_t col, uint8_t index, const RGB* static_color, const RGB* pulsing_color, const RGB* antiphase_color) {
+static inline void handle_mac_lighting(uint8_t row, uint8_t col, uint8_t index, const RGB* static_color_main, const RGB* static_color_alt, const RGB* pulsing_color, const RGB* antiphase_color) {
     uint16_t f_layer_keycode = keymap_key_to_keycode(MAC_F_LAYER, (keypos_t){col, row});
     uint16_t fn_keycode      = keymap_key_to_keycode(MAC_FN, (keypos_t){col, row});
 
@@ -157,7 +159,7 @@ static inline void handle_mac_lighting(uint8_t row, uint8_t col, uint8_t index, 
             if (layer_state_is(MAC_FN)) { // Изначально ВЫКЛ, Fn зажата
                 rgb_matrix_set_color(index, pulsing_color->r, pulsing_color->g, pulsing_color->b);
             } else { // Изначально ВКЛ, Fn НЕ зажата
-                rgb_matrix_set_color(index, static_color->r, static_color->g, static_color->b);
+                rgb_matrix_set_color(index, static_color_alt->r, static_color_alt->g, static_color_alt->b);
             }
         } else if (layer_state_is(MAC_FN)) { // Изначально ВКЛ, Fn зажата
             rgb_matrix_set_color(index, antiphase_color->r, antiphase_color->g, antiphase_color->b);
@@ -171,7 +173,7 @@ static inline void handle_mac_lighting(uint8_t row, uint8_t col, uint8_t index, 
     }
 
     if (layer_state_is(MAC_FN) && is_key_modified_in_layer(row, col, MAC_BASE, MAC_FN)) { // Это другая измененная клавиша на MAC_FN?
-        rgb_matrix_set_color(index, static_color->r, static_color->g, static_color->b);
+        rgb_matrix_set_color(index, static_color_main->r, static_color_main->g, static_color_main->b);
     }
 }
 
@@ -181,8 +183,10 @@ static inline void handle_win_lighting(uint8_t row, uint8_t col, uint8_t index, 
     }
 }
 
-// RGB индикация для активных слоев
-#define INDICATOR_COLOR_HSV (HSV){HSV_CYAN}
+#define MAIN_COLOR_HSV (HSV){HSV_CYAN}
+#define ALT_COLOR_HSV  (HSV){HSV_MAGENTA}
+
+#define PULSING_SPEED_DIV 2
 
 bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
     uint8_t current_val = rgb_matrix_get_val();
@@ -196,26 +200,31 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
         base_layer = IS_LAYER_ON(WIN_BASE) ? WIN_BASE : MAC_BASE;
     }
     // --- Анимация и цвета ---
-    uint8_t sin_wave = sin8(timer_read() >> 3); // timer_read() возвращает миллисекунды. Сдвиг вправо замедляет анимацию.
+    uint8_t sin_wave = sin8(timer_read() >> PULSING_SPEED_DIV); // timer_read() возвращает миллисекунды. Сдвиг вправо замедляет анимацию.
     uint8_t antiphase_sin_wave = 255 - sin_wave;
     uint8_t max_v = current_val;
     uint8_t min_v = max_v / 3; // Минимум — треть от максимума яркости
     uint8_t pulsing_val = min_v + scale8(sin_wave, max_v - min_v); // scale8 — быстрая 8-битная функция умножения (a * b) / 255.
     uint8_t antiphase_pulsing_val = min_v + scale8(antiphase_sin_wave, max_v - min_v);
 
-    HSV hsv_static = INDICATOR_COLOR_HSV;
-    RGB rgb_static_cyan = hsv_to_rgb((HSV){hsv_static.h, current_sat, current_val});
-    RGB rgb_pulsing_cyan = hsv_to_rgb((HSV){hsv_static.h, current_sat, pulsing_val});
-    RGB rgb_antiphase_pulsing_cyan = hsv_to_rgb((HSV){hsv_static.h, current_sat, antiphase_pulsing_val});
+    HSV hsv_static_main = MAIN_COLOR_HSV;
+    RGB rgb_static_main = hsv_to_rgb((HSV){hsv_static_main.h, current_sat, current_val});
+    // RGB rgb_pulsing_main = hsv_to_rgb((HSV){hsv_static_main.h, current_sat, pulsing_val});
+    // RGB rgb_antiphase_pulsing_main = hsv_to_rgb((HSV){hsv_static_main.h, current_sat, antiphase_pulsing_val});
+
+    HSV hsv_static_alt = ALT_COLOR_HSV;
+    RGB rgb_static_alt = hsv_to_rgb((HSV){hsv_static_alt.h, current_sat, current_val});
+    RGB rgb_pulsing_alt = hsv_to_rgb((HSV){hsv_static_alt.h, current_sat, pulsing_val});
+    RGB rgb_antiphase_pulsing_alt = hsv_to_rgb((HSV){hsv_static_alt.h, current_sat, antiphase_pulsing_val});
 
     for (uint8_t row = 0; row < MATRIX_ROWS; ++row) {
         for (uint8_t col = 0; col < MATRIX_COLS; ++col) {
             uint8_t index = g_led_config.matrix_co[row][col];
             if (index == NO_LED || index < led_min || index >= led_max) { continue; }
             if (base_layer == MAC_BASE) {
-                handle_mac_lighting(row, col, index, &rgb_static_cyan, &rgb_pulsing_cyan, &rgb_antiphase_pulsing_cyan);
+                handle_mac_lighting(row, col, index, &rgb_static_main, &rgb_static_alt, &rgb_pulsing_alt, &rgb_antiphase_pulsing_alt);
             } else {
-                handle_win_lighting(row, col, index, &rgb_static_cyan);
+                handle_win_lighting(row, col, index, &rgb_static_main);
             }
         }
     }
@@ -243,6 +252,10 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         case MACRO1: // "t:renderer"
             if (record->event.pressed) {
                 SEND_STRING("t:renderer");
+            } return false;
+        case MACRO2: // "t:Sharer"
+            if (record->event.pressed) {
+                SEND_STRING("t:Shader");
             } return false;
     }
 
