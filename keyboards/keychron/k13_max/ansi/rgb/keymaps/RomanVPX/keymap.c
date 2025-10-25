@@ -73,11 +73,11 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
         KC_LCTL,  KC_LOPTN, KC_LCMMD,                               KC_SPC,                                      KC_RCMMD, KC_ROPTN, MO(MAC_FN),KC_RCTL, KC_LEFT,  KC_DOWN,  KC_RGHT),
 
     [MAC_FN] = LAYOUT_ansi_90(
-        _______,            _______,  _______,  _______,  _______,  _______,  _______,  _______,    _______,     _______,  _______,  _______,   _______, KC_NUM,   XXXXXXX,  _______,
+        _______,            _______,  _______,  _______,  _______,  _______,  _______,  _______,    _______,     _______,  _______,  _______,   _______, XXXXXXX,  XXXXXXX,  XXXXXXX,
         _______,  BT_HST1,  BT_HST2,  BT_HST3,  P2P4G,    _______,  _______,  _______,  _______,    _______,     _______,  _______,  _______,   _______, _______,  MACRO2,   _______,
         RGB_TOG,  RGB_MOD,  _______,  RGB_HUI,  RGB_SAI,  RGB_SPI,  _______,  _______,  _______,    _______,     _______,  _______,  _______,   _______, _______,  _______,  _______,
-        QK_BOOT,  RGB_RMOD, _______,  RGB_HUD,  RGB_SAD,  RGB_SPD,  _______,  _______,  _______, TOGGLE_F_LAYER, _______,  _______,  _______,   HYP_P1,  _______,  HYP_P3,
-        _______,            _______,  _______,  _______,  _______,  BAT_LVL,  NK_TOGG,  _______,    _______,     _______,  _______,             _______, _______,
+        QK_BOOT,  RGB_RMOD, _______,  RGB_HUD,  RGB_SAD,  RGB_SPD,  _______,  _______,  _______, TOGGLE_F_LAYER, _______,  _______,             _______,  HYP_P1,  _______,  HYP_P3,
+        _______,            _______,  _______,  _______,  _______,  BAT_LVL,  NK_TOGG,  _______,    _______,     _______,  _______,             _______,           _______,
         _______,  _______,  _______,                                _______,                                     _______,  _______,  _______,   _______, HYP_LEFT, HYP_DOWN, HYP_RGHT),
 
     [WIN_BASE] = LAYOUT_ansi_90(
@@ -183,8 +183,8 @@ static inline void handle_win_lighting(uint8_t row, uint8_t col, uint8_t index, 
     }
 }
 
-#define MAIN_COLOR_HSV (HSV){HSV_CYAN}
-#define ALT_COLOR_HSV  (HSV){HSV_MAGENTA}
+#define MAIN_COLOR_HSV       (HSV){HSV_PINK}
+#define SECONDARY_COLOR_HSV  (HSV){HSV_CYAN}
 
 #define PULSING_SPEED_DIV 2
 
@@ -212,7 +212,7 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
     // RGB rgb_pulsing_main = hsv_to_rgb((HSV){hsv_static_main.h, current_sat, pulsing_val});
     // RGB rgb_antiphase_pulsing_main = hsv_to_rgb((HSV){hsv_static_main.h, current_sat, antiphase_pulsing_val});
 
-    HSV hsv_static_alt = ALT_COLOR_HSV;
+    HSV hsv_static_alt = SECONDARY_COLOR_HSV;
     RGB rgb_static_alt = hsv_to_rgb((HSV){hsv_static_alt.h, current_sat, current_val});
     RGB rgb_pulsing_alt = hsv_to_rgb((HSV){hsv_static_alt.h, current_sat, pulsing_val});
     RGB rgb_antiphase_pulsing_alt = hsv_to_rgb((HSV){hsv_static_alt.h, current_sat, antiphase_pulsing_val});
@@ -253,7 +253,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             if (record->event.pressed) {
                 SEND_STRING("t:renderer");
             } return false;
-        case MACRO2: // "t:Sharer"
+        case MACRO2: // "t:Shader"
             if (record->event.pressed) {
                 SEND_STRING("t:Shader");
             } return false;
