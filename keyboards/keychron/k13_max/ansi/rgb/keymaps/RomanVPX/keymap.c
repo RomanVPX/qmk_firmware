@@ -132,7 +132,7 @@ bool is_key_modified_in_layer(uint8_t row, uint8_t col, uint8_t base_layer, uint
     uint16_t base_keycode = keymap_key_to_keycode(base_layer, (keypos_t){col, row});
     uint16_t target_keycode = keymap_key_to_keycode(target_layer, (keypos_t){col, row});
 
-    return (base_keycode != target_keycode) && (target_keycode != KC_TRNS);
+    return (base_keycode != target_keycode) && (target_keycode != KC_TRNS) && (target_keycode != KC_NO);
 }
 
 // Функция для подсветки F-клавиш указанным цветом
