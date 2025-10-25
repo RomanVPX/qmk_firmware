@@ -27,7 +27,7 @@
             "pixel_rain": false,
             "rainbow_beacon": false,
             "rainbow_moving_chevron": false,
-            "solid_reactive_multinexus": false,
+            "solid_reactive_multinexus": true,
             "solid_reactive_multiwide": false,
             "solid_reactive_simple": false,
             "solid_splash": false,
