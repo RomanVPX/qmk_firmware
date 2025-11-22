@@ -24,13 +24,13 @@ enum layers {
     WIN_BASE,
     WIN_FN,
     MAC_F_LAYER,  // Слой для клавиш F1-F12 в macOS
-    // STRINGS_LAYER, // Слой для макросов с текстом
+    STRINGS_LAYER, // Слой для макросов с текстом
 };
 
 enum custom_keycodes {
-    MACRO0 = SAFE_RANGE,
-    MACRO1,
-    MACRO2,
+    STRING00 = SAFE_RANGE,
+    STRING01,
+    STRING02,
     TOGGLE_F_LAYER,
 };
 
@@ -67,7 +67,7 @@ enum custom_keycodes {
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     [MAC_BASE] = LAYOUT_ansi_90(
         KC_ESC,             KC_BRID,  KC_BRIU,  KC_MCTRL, KC_LNPAD, RGB_VAD,  RGB_VAI,  KC_MPRV,    KC_MPLY,     KC_MNXT,  KC_MUTE,  KC_VOLD,   KC_VOLU, HYP_C,    HYP_N,    HYP_T,
-        KC_GRV,   KC_1,     KC_2,     KC_3,     KC_4,     KC_5,     KC_6,     KC_7,     KC_8,       KC_9,        KC_0,     KC_MINS,  KC_EQL,    KC_BSPC, MACRO0,   MACRO1,   SCMD(KC_P),
+        KC_GRV,   KC_1,     KC_2,     KC_3,     KC_4,     KC_5,     KC_6,     KC_7,     KC_8,       KC_9,        KC_0,     KC_MINS,  KC_EQL,    KC_BSPC, STRING00, STRING01,   SCMD(KC_P),
         KC_TAB,   KC_Q,     KC_W,     KC_E,     KC_R,     KC_T,     KC_Y,     KC_U,     KC_I,       KC_O,        KC_P,     KC_LBRC,  KC_RBRC,   KC_BSLS, KC_INS,   KC_HOME,  KC_PGUP,
         KC_CAPS,  KC_A,     KC_S,     KC_D,     KC_F,     KC_G,     KC_H,     KC_J,     KC_K,       KC_L,        KC_SCLN,  KC_QUOT,             KC_ENT,  KC_DEL,   KC_END,   KC_PGDN,
         KC_LSFT,            KC_Z,     KC_X,     KC_C,     KC_V,     KC_B,     KC_N,     KC_M,       KC_COMM,     KC_DOT,   KC_SLSH,             KC_RSFT,           KC_UP,
@@ -75,7 +75,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 
     [MAC_FN] = LAYOUT_ansi_90(
         _______,            _______,  _______,  _______,  _______,  _______,  _______,  _______,    _______,     _______,  _______,  _______,   _______, XXXXXXX,  XXXXXXX,  XXXXXXX,
-        _______,  BT_HST1,  BT_HST2,  BT_HST3,  P2P4G,    _______,  _______,  _______,  _______,    _______,     _______,  _______,  _______,   _______, _______,  MACRO2,   _______,
+        _______,  BT_HST1,  BT_HST2,  BT_HST3,  P2P4G,    _______,  _______,  _______,  _______,    _______,     _______,  _______,  _______,   _______, _______,  STRING02,   _______,
         RGB_TOG,  RGB_MOD,  _______,  RGB_HUI,  RGB_SAI,  RGB_SPI,  _______,  _______,  _______,    _______,     _______,  _______,  _______,   _______, _______,  _______,  _______,
         QK_BOOT,  RGB_RMOD, _______,  RGB_HUD,  RGB_SAD,  RGB_SPD,  _______,  _______,  _______, TOGGLE_F_LAYER, _______,  _______,             _______,  HYP_P1,  _______,  HYP_P3,
         _______,            _______,  _______,  _______,  _______,  BAT_LVL,  NK_TOGG,  _______,    _______,     _______,  _______,             _______,           _______,
@@ -246,15 +246,15 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 }
             } return false;
 
-        case MACRO0: // "t:camera"
+        case STRING00: // "t:camera"
             if (record->event.pressed) {
                 SEND_STRING("t:camera");
             } return false;
-        case MACRO1: // "t:renderer"
+        case STRING01: // "t:renderer"
             if (record->event.pressed) {
                 SEND_STRING("t:renderer");
             } return false;
-        case MACRO2: // "t:Shader"
+        case STRING02: // "t:Shader"
             if (record->event.pressed) {
                 SEND_STRING("t:Shader");
             } return false;
