@@ -184,13 +184,17 @@ static inline void handle_win_lighting(uint8_t row, uint8_t col, uint8_t index, 
     }
 }
 
+#define INDICATOR_MAX_VALUE RGB_MATRIX_MAXIMUM_BRIGHTNESS
+#ifndef INDICATOR_MAX_VALUE
+    #define INDICATOR_MAX_VALUE rgb_matrix_get_val()
+#endif
 #define MAIN_COLOR_HSV       (HSV){HSV_PINK}
 #define SECONDARY_COLOR_HSV  (HSV){HSV_CYAN}
 
 #define PULSING_SPEED_DIV 2
 
 bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
-    uint8_t current_val = rgb_matrix_get_val();
+    uint8_t current_val = INDICATOR_MAX_VALUE;
     uint8_t current_sat = rgb_matrix_get_sat();
     if (current_val == 0) return false;
 
