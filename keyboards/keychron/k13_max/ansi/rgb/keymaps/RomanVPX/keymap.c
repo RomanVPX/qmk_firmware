@@ -24,6 +24,7 @@ enum layers {
     WIN_BASE,
     WIN_FN,
     MAC_F_LAYER,  // Слой для клавиш F1-F12 в macOS
+    // STRINGS_LAYER, // Слой для макросов с текстом
 };
 
 enum custom_keycodes {
