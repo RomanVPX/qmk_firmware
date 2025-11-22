@@ -23,8 +23,8 @@ enum layers {
     MAC_FN,
     WIN_BASE,
     WIN_FN,
-    MAC_F_LAYER,  // Слой для клавиш F1-F12 в macOS
-    STRINGS_LAYER, // Слой для макросов с текстом
+    MAC_F_LAYER,    // Слой для клавиш F1-F12 в macOS
+    STRINGS_LAYER,  // Слой с клавишами SET_STRING
 };
 
 enum custom_keycodes {
@@ -35,7 +35,7 @@ enum custom_keycodes {
 };
 
 
-/*|docs/feature_rgb_matrix.md
+/*| docs/feature_rgb_matrix.md
  *|Key                |Aliases   |Description                                                                           |
  *|-------------------|----------|--------------------------------------------------------------------------------------|
  *|`RGB_TOG`          |          |Toggle RGB lighting on or off                                                         |
@@ -67,7 +67,7 @@ enum custom_keycodes {
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     [MAC_BASE] = LAYOUT_ansi_90(
         KC_ESC,             KC_BRID,  KC_BRIU,  KC_MCTRL, KC_LNPAD, RGB_VAD,  RGB_VAI,  KC_MPRV,    KC_MPLY,     KC_MNXT,  KC_MUTE,  KC_VOLD,   KC_VOLU, HYP_C,    HYP_N,    HYP_T,
-        KC_GRV,   KC_1,     KC_2,     KC_3,     KC_4,     KC_5,     KC_6,     KC_7,     KC_8,       KC_9,        KC_0,     KC_MINS,  KC_EQL,    KC_BSPC, STRING00, STRING01,   SCMD(KC_P),
+        KC_GRV,   KC_1,     KC_2,     KC_3,     KC_4,     KC_5,     KC_6,     KC_7,     KC_8,       KC_9,        KC_0,     KC_MINS,  KC_EQL,    KC_BSPC, STRING00, STRING01, SCMD(KC_P),
         KC_TAB,   KC_Q,     KC_W,     KC_E,     KC_R,     KC_T,     KC_Y,     KC_U,     KC_I,       KC_O,        KC_P,     KC_LBRC,  KC_RBRC,   KC_BSLS, KC_INS,   KC_HOME,  KC_PGUP,
         KC_CAPS,  KC_A,     KC_S,     KC_D,     KC_F,     KC_G,     KC_H,     KC_J,     KC_K,       KC_L,        KC_SCLN,  KC_QUOT,             KC_ENT,  KC_DEL,   KC_END,   KC_PGDN,
         KC_LSFT,            KC_Z,     KC_X,     KC_C,     KC_V,     KC_B,     KC_N,     KC_M,       KC_COMM,     KC_DOT,   KC_SLSH,             KC_RSFT,           KC_UP,
@@ -75,7 +75,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 
     [MAC_FN] = LAYOUT_ansi_90(
         _______,            _______,  _______,  _______,  _______,  _______,  _______,  _______,    _______,     _______,  _______,  _______,   _______, XXXXXXX,  XXXXXXX,  XXXXXXX,
-        _______,  BT_HST1,  BT_HST2,  BT_HST3,  P2P4G,    _______,  _______,  _______,  _______,    _______,     _______,  _______,  _______,   _______, _______,  STRING02,   _______,
+        _______,  BT_HST1,  BT_HST2,  BT_HST3,  P2P4G,    _______,  _______,  _______,  _______,    _______,     _______,  _______,  _______,   _______, _______,  STRING02, _______,
         RGB_TOG,  RGB_MOD,  _______,  RGB_HUI,  RGB_SAI,  RGB_SPI,  _______,  _______,  _______,    _______,     _______,  _______,  _______,   _______, _______,  _______,  _______,
         QK_BOOT,  RGB_RMOD, _______,  RGB_HUD,  RGB_SAD,  RGB_SPD,  _______,  _______,  _______, TOGGLE_F_LAYER, _______,  _______,             _______,  HYP_P1,  _______,  HYP_P3,
         _______,            _______,  _______,  _______,  _______,  BAT_LVL,  NK_TOGG,  _______,    _______,     _______,  _______,             _______,           _______,
@@ -188,6 +188,7 @@ static inline void handle_win_lighting(uint8_t row, uint8_t col, uint8_t index, 
 #ifndef INDICATOR_MAX_VALUE
     #define INDICATOR_MAX_VALUE rgb_matrix_get_val()
 #endif
+
 #define MAIN_COLOR_HSV       (HSV){HSV_PINK}
 #define SECONDARY_COLOR_HSV  (HSV){HSV_CYAN}
 
