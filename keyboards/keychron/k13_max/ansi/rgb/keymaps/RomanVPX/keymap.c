@@ -47,8 +47,8 @@ static bool fn_used_for_combo = false;
 static uint16_t fn_strings_timer = 0;
 
 // String animation state
-#define ANIMATION_CHAR_DURATION 500
-#define ANIMATION_CHAR_FADEOUT 300
+#define ANIMATION_CHAR_DURATION 600
+#define ANIMATION_CHAR_FADEOUT 500
 static bool animation_active = false;
 static const char* animation_string = NULL;
 static uint8_t animation_index = 0;
@@ -130,6 +130,18 @@ static void start_animation(uint16_t keycode) {
     animation_timer = timer_read();
     animation_active = true;
     prev_anim_valid = false;
+}
+
+// Check if a key position is part of the animation string
+static bool is_key_in_animation_string(uint8_t row, uint8_t col) {
+    if (!animation_active || animation_string == NULL) return false;
+    for (uint8_t i = 0; i < animation_length; i++) {
+        uint8_t char_row, char_col;
+        if (get_matrix_position_for_char(animation_string[i], &char_row, &char_col)) {
+            if (char_row == row && char_col == col) return true;
+        }
+    }
+    return false;
 }
 
 
@@ -294,13 +306,16 @@ static inline uint8_t get_effective_sat(uint8_t sat) {
     #define INDICATOR_MAX_VALUE rgb_matrix_get_val()
 #endif
 
-#define MAIN_COLOR_HSV          (HSV){HSV_MAGENTA}
-#define SECONDARY_COLOR_HSV     (HSV){HSV_CYAN}
-#define STRINGS_LAYER_COLOR_HSV (HSV){HSV_GOLDENROD}
-#define ANIMATION_COLOR_HSV     (HSV){HSV_GREEN}
+#define MAIN_COLOR_HSV                  (HSV){HSV_MAGENTA}
+#define SECONDARY_COLOR_HSV             (HSV){HSV_CYAN}
 
-#define PULSING_SPEED_DIV       2
-#define PULSING_MIN_VALUE_DIV   3
+#define STRINGS_LAYER_COLOR_HSV         (HSV){HSV_GOLDENROD}
+#define STRINGS_ANIMATION_COLOR_HSV     (HSV){HSV_SPRINGGREEN}
+#define STRINGS_LAYER_PREVIEW_COLOR_HSV (HSV){HSV_WHITE}
+#define STRINGS_LAYER_PREVIEW_DIV       2
+
+#define PULSING_SPEED_DIV               2
+#define PULSING_MIN_VALUE_DIV           3
 
 bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
     uint8_t current_val = INDICATOR_MAX_VALUE;
@@ -308,14 +323,26 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
 
     // STRINGS_LAYER has priority
     if (strings_layer_active) {
+        // Pulsing for Fn hold
+        uint8_t sin_wave = sin8(timer_read() >> PULSING_SPEED_DIV);
+        uint8_t min_v = current_val / PULSING_MIN_VALUE_DIV;
+        uint8_t pulsing_val = min_v + scale8(sin_wave, current_val - min_v);
+
         HSV hsv_strings = STRINGS_LAYER_COLOR_HSV;
         uint8_t strings_effective_sat = get_effective_sat(hsv_strings.s);
         RGB rgb_strings = hsv_to_rgb((HSV){hsv_strings.h, strings_effective_sat, current_val});
+        RGB rgb_strings_pulsing = hsv_to_rgb((HSV){hsv_strings.h, strings_effective_sat, pulsing_val});
 
         // Animation color
-        HSV hsv_anim = ANIMATION_COLOR_HSV;
+        HSV hsv_anim = STRINGS_ANIMATION_COLOR_HSV;
         uint8_t anim_effective_sat = get_effective_sat(hsv_anim.s);
         RGB rgb_anim = hsv_to_rgb((HSV){hsv_anim.h, anim_effective_sat, current_val});
+
+        // Animation preview color (yellow at half brightness)
+        HSV hsv_preview = STRINGS_LAYER_PREVIEW_COLOR_HSV;
+        uint8_t preview_effective_sat = get_effective_sat(hsv_preview.s);
+        hsv_preview.v = current_val;
+        RGB rgb_anim_preview = hsv_to_rgb((HSV){hsv_preview.h, preview_effective_sat, current_val / STRINGS_LAYER_PREVIEW_DIV});
 
         // Update animation state
         uint8_t anim_row = 0, anim_col = 0;
@@ -366,16 +393,24 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
                 uint8_t index = g_led_config.matrix_co[row][col];
                 if (index == NO_LED || index < led_min || index >= led_max) continue;
 
-                // Current animation key - full brightness
+                uint16_t keycode = keymap_key_to_keycode(STRINGS_LAYER, (keypos_t){col, row});
+                bool is_active_key = IS_STRING_MACRO(keycode);
+
+                // Current animation key - full brightness green
                 if (anim_key_found && row == anim_row && col == anim_col) {
                     rgb_matrix_set_color(index, rgb_anim.r, rgb_anim.g, rgb_anim.b);
                 }
                 // Previous key - transition from anim color to target color
                 else if (prev_anim_valid && row == prev_anim_row && col == prev_anim_col) {
-                    uint16_t prev_keycode = keymap_key_to_keycode(STRINGS_LAYER, (keypos_t){col, row});
-                    bool is_active_key = IS_STRING_MACRO(prev_keycode);
-                    // Target: rgb_strings for active keys, off for others
-                    RGB target = is_active_key ? rgb_strings : (RGB){0, 0, 0};
+                    // Target: rgb_strings for active keys, anim_preview for keys in string, off for others
+                    RGB target;
+                    if (is_active_key) {
+                        target = rgb_strings;
+                    } else if (is_key_in_animation_string(row, col)) {
+                        target = rgb_anim_preview;
+                    } else {
+                        target = (RGB){0, 0, 0};
+                    }
                     // Linear interpolation: anim -> target
                     uint8_t inv = 255 - transition_progress;
                     RGB rgb_blend = {
@@ -385,9 +420,19 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
                     };
                     rgb_matrix_set_color(index, rgb_blend.r, rgb_blend.g, rgb_blend.b);
                 }
-                else {
-                    handle_strings_layer_lighting(row, col, index, &rgb_strings);
+                // Keys in animation string - preview
+                else if (animation_active && is_key_in_animation_string(row, col)) {
+                    rgb_matrix_set_color(index, rgb_anim_preview.r, rgb_anim_preview.g, rgb_anim_preview.b);
                 }
+                // Active keys with Fn held - pulsing
+                else if (fn_held_in_strings_layer && is_active_key) {
+                    rgb_matrix_set_color(index, rgb_strings_pulsing.r, rgb_strings_pulsing.g, rgb_strings_pulsing.b);
+                }
+                // Normal active keys
+                else if (is_active_key) {
+                    rgb_matrix_set_color(index, rgb_strings.r, rgb_strings.g, rgb_strings.b);
+                }
+                // Other keys - no highlight
             }
         }
         return false;
