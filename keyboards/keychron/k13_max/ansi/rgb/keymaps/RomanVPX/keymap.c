@@ -28,11 +28,12 @@ enum layers {
 };
 
 enum custom_keycodes {
-    STRNG_C = SAFE_RANGE,
-    STRNG_R,
-    STRNG_S,
+    STRNG_FIRST = SAFE_RANGE - 1,
+    #define STRNG_X(name, str) name,
+    #include "strng.inc"
+    STRNG_LAST,
     TOGGLE_F_LAYER,
-    FN_TAP,  // Custom Fn key with double-tap support
+    FN_TAP,
 };
 
 // Double-tap detection for FN_TAP
@@ -113,7 +114,6 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
         _______,             _______,  _______, _______,  _______,   _______, _______,   _______,    _______,     _______,  _______,            _______,            _______,
         _______,  _______,   _______,                                _______,                                     _______,  _______,  _______,  _______,  _______,  _______, _______),
 
-    // STRINGS_LAYER - выключает все клавиши, кроме тех, на которых есть STRINGnn
     [STRINGS_LAYER] = LAYOUT_ansi_90(
         XXXXXXX,             XXXXXXX,  XXXXXXX, XXXXXXX,  XXXXXXX,   XXXXXXX, XXXXXXX,   XXXXXXX,    XXXXXXX,     XXXXXXX,  XXXXXXX,  XXXXXXX,  XXXXXXX,  XXXXXXX,  XXXXXXX, XXXXXXX,
         XXXXXXX,  XXXXXXX,   XXXXXXX,  XXXXXXX, XXXXXXX,  XXXXXXX,   XXXXXXX, XXXXXXX,   XXXXXXX,    XXXXXXX,     XXXXXXX,  XXXXXXX,  XXXXXXX,  XXXXXXX,  XXXXXXX,  XXXXXXX, XXXXXXX,
@@ -125,7 +125,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 // clang-format on
 
 #define IS_F_KEYCODE(keycode) ((keycode) >= KC_F1 && (keycode) <= KC_F12)
-#define IS_STRING_MACRO(keycode) ((keycode) >= STRNG_C && (keycode) <= STRNG_S)
+#define IS_STRING_MACRO(keycode) ((keycode) > STRNG_FIRST && (keycode) < STRNG_LAST)
 
 // Вызывается при каждом изменении состояния слоев
 layer_state_t layer_state_set_user(layer_state_t state) {
@@ -208,7 +208,8 @@ static inline uint8_t get_effective_sat(uint8_t sat) {
 #define SECONDARY_COLOR_HSV     (HSV){HSV_CYAN}
 #define STRINGS_LAYER_COLOR_HSV (HSV){HSV_WHITE}
 
-#define PULSING_SPEED_DIV 2
+#define PULSING_SPEED_DIV       2
+#define PULSING_MIN_VALUE_DIV   3
 
 bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
     uint8_t current_val = INDICATOR_MAX_VALUE;
@@ -239,7 +240,7 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
     uint8_t sin_wave = sin8(timer_read() >> PULSING_SPEED_DIV); // timer_read() возвращает миллисекунды. Сдвиг вправо замедляет анимацию.
     uint8_t antiphase_sin_wave = 255 - sin_wave;
     uint8_t max_v = current_val;
-    uint8_t min_v = max_v / 3; // Минимум — треть от максимума яркости
+    uint8_t min_v = max_v / PULSING_MIN_VALUE_DIV;
     uint8_t pulsing_val = min_v + scale8(sin_wave, max_v - min_v); // scale8 — быстрая 8-битная функция умножения (a * b) / 255.
     uint8_t antiphase_pulsing_val = min_v + scale8(antiphase_sin_wave, max_v - min_v);
 
@@ -339,18 +340,8 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 }
             } return false;
 
-        case STRNG_C: // "t:camera"
-            if (record->event.pressed) {
-                SEND_STRING("t:camera");
-            } return false;
-        case STRNG_R: // "t:renderer"
-            if (record->event.pressed) {
-                SEND_STRING("t:renderer");
-            } return false;
-        case STRNG_S: // "t:Shader"
-            if (record->event.pressed) {
-                SEND_STRING("t:Shader");
-            } return false;
+        #define STRNG_X(name, str) case name: if (record->event.pressed) { SEND_STRING(str); } return false;
+        #include "strng.inc"
     }
 
     return true;
