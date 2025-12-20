@@ -58,6 +58,14 @@ static uint8_t prev_anim_row = 0, prev_anim_col = 0;
 static bool prev_anim_valid = false;
 static uint16_t prev_anim_timer = 0;
 
+
+typedef struct {
+    RGB main;
+    RGB alt;
+    RGB pulsing;
+    RGB antiphase;
+} Palette;
+
 // Animation cache to improve RGB matrix performance
 typedef struct {
     uint8_t row;
@@ -273,30 +281,30 @@ bool is_key_modified_in_layer(uint8_t row, uint8_t col, uint8_t base_layer, uint
     return (base_keycode != target_keycode) && (target_keycode != KC_TRNS) && (target_keycode != KC_NO);
 }
 
-static inline void handle_mac_lighting(uint8_t row, uint8_t col, uint8_t index, const RGB* static_color_main, const RGB* static_color_alt, const RGB* pulsing_color, const RGB* antiphase_color, bool is_mac_fn, bool is_mac_f_layer) {
+static inline void handle_mac_lighting(uint8_t row, uint8_t col, uint8_t index, const Palette* palette, bool is_mac_fn, bool is_mac_f_layer) {
     uint16_t f_layer_keycode = keymap_key_to_keycode(MAC_F_LAYER, (keypos_t){col, row});
     uint16_t fn_keycode      = keymap_key_to_keycode(MAC_FN, (keypos_t){col, row});
 
     if (IS_F_KEYCODE(f_layer_keycode)) { // Это F-клавиша?
         if (is_mac_f_layer) {
             if (is_mac_fn) { // Изначально ВЫКЛ, Fn зажата
-                rgb_matrix_set_color(index, pulsing_color->r, pulsing_color->g, pulsing_color->b);
+                rgb_matrix_set_color(index, palette->pulsing.r, palette->pulsing.g, palette->pulsing.b);
             } else { // Изначально ВКЛ, Fn НЕ зажата
-                rgb_matrix_set_color(index, static_color_alt->r, static_color_alt->g, static_color_alt->b);
+                rgb_matrix_set_color(index, palette->alt.r, palette->alt.g, palette->alt.b);
             }
         } else if (is_mac_fn) { // Изначально ВКЛ, Fn зажата
-            rgb_matrix_set_color(index, antiphase_color->r, antiphase_color->g, antiphase_color->b);
+            rgb_matrix_set_color(index, palette->antiphase.r, palette->antiphase.g, palette->antiphase.b);
         }
         return; // F-клавиша обработана, дальше не идем
     }
 
     if (is_mac_fn && fn_keycode == TOGGLE_F_LAYER) { // Это TOGGLE_F_LAYER?
-        rgb_matrix_set_color(index, pulsing_color->r, pulsing_color->g, pulsing_color->b);
+        rgb_matrix_set_color(index, palette->pulsing.r, palette->pulsing.g, palette->pulsing.b);
         return; // Клавиша обработана
     }
 
     if (is_mac_fn && is_key_modified_in_layer(row, col, MAC_BASE, MAC_FN)) { // Это другая измененная клавиша на MAC_FN?
-        rgb_matrix_set_color(index, static_color_main->r, static_color_main->g, static_color_main->b);
+        rgb_matrix_set_color(index, palette->main.r, palette->main.g, palette->main.b);
     }
 }
 
@@ -485,12 +493,19 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
     bool is_mac_fn = layer_state_is(MAC_FN);
     bool is_mac_f_layer = layer_state_is(MAC_F_LAYER);
 
+    Palette palette = {
+        .main = rgb_static_main,
+        .alt = rgb_static_alt,
+        .pulsing = rgb_pulsing_alt,
+        .antiphase = rgb_antiphase_pulsing_alt,
+    };
+
     for (uint8_t row = 0; row < MATRIX_ROWS; ++row) {
         for (uint8_t col = 0; col < MATRIX_COLS; ++col) {
             uint8_t index = g_led_config.matrix_co[row][col];
             if (index == NO_LED || index < led_min || index >= led_max) { continue; }
             if (base_layer == MAC_BASE) {
-                handle_mac_lighting(row, col, index, &rgb_static_main, &rgb_static_alt, &rgb_pulsing_alt, &rgb_antiphase_pulsing_alt, is_mac_fn, is_mac_f_layer);
+                handle_mac_lighting(row, col, index, &palette, is_mac_fn, is_mac_f_layer);
             } else {
                 handle_win_lighting(row, col, index, &rgb_static_main);
             }
