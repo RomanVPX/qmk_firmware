@@ -276,30 +276,29 @@ bool is_key_modified_in_layer(uint8_t row, uint8_t col, uint8_t base_layer, uint
     return (base_keycode != target_keycode) && (target_keycode != KC_TRNS) && (target_keycode != KC_NO);
 }
 
-
-static inline void handle_mac_lighting(uint8_t row, uint8_t col, uint8_t index, const RGB* static_color_main, const RGB* static_color_alt, const RGB* pulsing_color, const RGB* antiphase_color) {
+static inline void handle_mac_lighting(uint8_t row, uint8_t col, uint8_t index, const RGB* static_color_main, const RGB* static_color_alt, const RGB* pulsing_color, const RGB* antiphase_color, bool is_mac_fn, bool is_mac_f_layer) {
     uint16_t f_layer_keycode = keymap_key_to_keycode(MAC_F_LAYER, (keypos_t){col, row});
     uint16_t fn_keycode      = keymap_key_to_keycode(MAC_FN, (keypos_t){col, row});
 
     if (IS_F_KEYCODE(f_layer_keycode)) { // Это F-клавиша?
-        if (layer_state_is(MAC_F_LAYER)) {
-            if (layer_state_is(MAC_FN)) { // Изначально ВЫКЛ, Fn зажата
+        if (is_mac_f_layer) {
+            if (is_mac_fn) { // Изначально ВЫКЛ, Fn зажата
                 rgb_matrix_set_color(index, pulsing_color->r, pulsing_color->g, pulsing_color->b);
             } else { // Изначально ВКЛ, Fn НЕ зажата
                 rgb_matrix_set_color(index, static_color_alt->r, static_color_alt->g, static_color_alt->b);
             }
-        } else if (layer_state_is(MAC_FN)) { // Изначально ВКЛ, Fn зажата
+        } else if (is_mac_fn) { // Изначально ВКЛ, Fn зажата
             rgb_matrix_set_color(index, antiphase_color->r, antiphase_color->g, antiphase_color->b);
         }
         return; // F-клавиша обработана, дальше не идем
     }
 
-    if (layer_state_is(MAC_FN) && fn_keycode == TOGGLE_F_LAYER) { // Это TOGGLE_F_LAYER?
+    if (is_mac_fn && fn_keycode == TOGGLE_F_LAYER) { // Это TOGGLE_F_LAYER?
         rgb_matrix_set_color(index, pulsing_color->r, pulsing_color->g, pulsing_color->b);
         return; // Клавиша обработана
     }
 
-    if (layer_state_is(MAC_FN) && is_key_modified_in_layer(row, col, MAC_BASE, MAC_FN)) { // Это другая измененная клавиша на MAC_FN?
+    if (is_mac_fn && is_key_modified_in_layer(row, col, MAC_BASE, MAC_FN)) { // Это другая измененная клавиша на MAC_FN?
         rgb_matrix_set_color(index, static_color_main->r, static_color_main->g, static_color_main->b);
     }
 }
@@ -331,125 +330,129 @@ static inline uint8_t get_effective_sat(uint8_t sat) {
 #define PULSING_SPEED_DIV               2
 #define PULSING_MIN_VALUE_DIV           3
 
+static bool rgb_render_strings_layer(uint8_t led_min, uint8_t led_max, uint8_t current_val) {
+    // Pulsing for Fn hold
+    uint8_t sin_wave = sin8(timer_read() >> PULSING_SPEED_DIV);
+    uint8_t min_v = current_val / PULSING_MIN_VALUE_DIV;
+    uint8_t pulsing_val = min_v + scale8(sin_wave, current_val - min_v);
+
+    HSV hsv_strings = STRINGS_LAYER_COLOR_HSV;
+    uint8_t strings_effective_sat = get_effective_sat(hsv_strings.s);
+    RGB rgb_strings = hsv_to_rgb((HSV){hsv_strings.h, strings_effective_sat, current_val});
+    RGB rgb_strings_pulsing = hsv_to_rgb((HSV){hsv_strings.h, strings_effective_sat, pulsing_val});
+
+    // Animation color
+    HSV hsv_anim = STRINGS_ANIMATION_COLOR_HSV;
+    uint8_t anim_effective_sat = get_effective_sat(hsv_anim.s);
+    RGB rgb_anim = hsv_to_rgb((HSV){hsv_anim.h, anim_effective_sat, current_val});
+
+    // Animation preview color (yellow at half brightness)
+    HSV hsv_preview = STRINGS_LAYER_PREVIEW_COLOR_HSV;
+    uint8_t preview_effective_sat = get_effective_sat(hsv_preview.s);
+    hsv_preview.v = current_val;
+    RGB rgb_anim_preview = hsv_to_rgb((HSV){hsv_preview.h, preview_effective_sat, current_val / STRINGS_LAYER_PREVIEW_DIV});
+
+    // Update animation state
+    uint8_t anim_row = 0, anim_col = 0;
+    bool anim_key_found = false;
+    if (animation_active) {
+        // Get current character position first
+        if (animation_string != NULL) {
+            char current_char = animation_string[animation_index];
+            anim_key_found = get_matrix_position_for_char(current_char, &anim_row, &anim_col);
+        }
+        // Check if we need to advance to next character
+        if (timer_elapsed(animation_timer) >= ANIMATION_CHAR_DURATION) {
+            // Save current position as previous for fadeout
+            if (anim_key_found) {
+                prev_anim_row = anim_row;
+                prev_anim_col = anim_col;
+                prev_anim_valid = true;
+                prev_anim_timer = timer_read();
+            }
+            animation_index++;
+            animation_timer = timer_read();
+            // Check if animation finished
+            if (animation_index >= animation_length) {
+                stop_animation();
+                anim_key_found = false;
+            } else {
+                // Update to new character position
+                char current_char = animation_string[animation_index];
+                anim_key_found = get_matrix_position_for_char(current_char, &anim_row, &anim_col);
+            }
+        }
+    }
+
+    // Calculate transition progress for previous key (0 = anim color, 255 = target color)
+    uint8_t transition_progress = 255;
+    if (prev_anim_valid) {
+        uint16_t elapsed = timer_elapsed(prev_anim_timer);
+        if (elapsed >= ANIMATION_CHAR_FADEOUT) {
+            prev_anim_valid = false;
+        } else {
+            transition_progress = (elapsed * 255) / ANIMATION_CHAR_FADEOUT;
+        }
+    }
+
+    // Render lighting
+    for (uint8_t row = 0; row < MATRIX_ROWS; ++row) {
+        for (uint8_t col = 0; col < MATRIX_COLS; ++col) {
+            uint8_t index = g_led_config.matrix_co[row][col];
+            if (index == NO_LED || index < led_min || index >= led_max) continue;
+
+            uint16_t keycode = keymap_key_to_keycode(STRINGS_LAYER, (keypos_t){col, row});
+            bool is_active_key = IS_STRING_MACRO(keycode);
+
+            // Current animation key - full brightness green
+            if (anim_key_found && row == anim_row && col == anim_col) {
+                rgb_matrix_set_color(index, rgb_anim.r, rgb_anim.g, rgb_anim.b);
+            }
+            // Previous key - transition from anim color to target color
+            else if (prev_anim_valid && row == prev_anim_row && col == prev_anim_col) {
+                // Target: rgb_strings for active keys, anim_preview for keys in string, off for others
+                RGB target;
+                if (is_active_key) {
+                    target = rgb_strings;
+                } else if (is_key_in_animation_string(row, col)) {
+                    target = rgb_anim_preview;
+                } else {
+                    target = (RGB){0, 0, 0};
+                }
+                // Linear interpolation: anim -> target
+                uint8_t inv = 255 - transition_progress;
+                RGB rgb_blend = {
+                    .r = (rgb_anim.r * inv + target.r * transition_progress) / 255,
+                    .g = (rgb_anim.g * inv + target.g * transition_progress) / 255,
+                    .b = (rgb_anim.b * inv + target.b * transition_progress) / 255
+                };
+                rgb_matrix_set_color(index, rgb_blend.r, rgb_blend.g, rgb_blend.b);
+            }
+            // Keys in animation string - preview
+            else if (animation_active && is_key_in_animation_string(row, col)) {
+                rgb_matrix_set_color(index, rgb_anim_preview.r, rgb_anim_preview.g, rgb_anim_preview.b);
+            }
+            // Active keys with Fn held - pulsing
+            else if (fn_held_in_strings_layer && is_active_key) {
+                rgb_matrix_set_color(index, rgb_strings_pulsing.r, rgb_strings_pulsing.g, rgb_strings_pulsing.b);
+            }
+            // Normal active keys
+            else if (is_active_key) {
+                rgb_matrix_set_color(index, rgb_strings.r, rgb_strings.g, rgb_strings.b);
+            }
+            // Other keys - no highlight
+        }
+    }
+    return false;
+}
+
 bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
     uint8_t current_val = INDICATOR_MAX_VALUE;
     if (current_val == 0) return false;
 
     // STRINGS_LAYER has priority
     if (strings_layer_active) {
-        // Pulsing for Fn hold
-        uint8_t sin_wave = sin8(timer_read() >> PULSING_SPEED_DIV);
-        uint8_t min_v = current_val / PULSING_MIN_VALUE_DIV;
-        uint8_t pulsing_val = min_v + scale8(sin_wave, current_val - min_v);
-
-        HSV hsv_strings = STRINGS_LAYER_COLOR_HSV;
-        uint8_t strings_effective_sat = get_effective_sat(hsv_strings.s);
-        RGB rgb_strings = hsv_to_rgb((HSV){hsv_strings.h, strings_effective_sat, current_val});
-        RGB rgb_strings_pulsing = hsv_to_rgb((HSV){hsv_strings.h, strings_effective_sat, pulsing_val});
-
-        // Animation color
-        HSV hsv_anim = STRINGS_ANIMATION_COLOR_HSV;
-        uint8_t anim_effective_sat = get_effective_sat(hsv_anim.s);
-        RGB rgb_anim = hsv_to_rgb((HSV){hsv_anim.h, anim_effective_sat, current_val});
-
-        // Animation preview color (yellow at half brightness)
-        HSV hsv_preview = STRINGS_LAYER_PREVIEW_COLOR_HSV;
-        uint8_t preview_effective_sat = get_effective_sat(hsv_preview.s);
-        hsv_preview.v = current_val;
-        RGB rgb_anim_preview = hsv_to_rgb((HSV){hsv_preview.h, preview_effective_sat, current_val / STRINGS_LAYER_PREVIEW_DIV});
-
-        // Update animation state
-        uint8_t anim_row = 0, anim_col = 0;
-        bool anim_key_found = false;
-        if (animation_active) {
-            // Get current character position first
-            if (animation_string != NULL) {
-                char current_char = animation_string[animation_index];
-                anim_key_found = get_matrix_position_for_char(current_char, &anim_row, &anim_col);
-            }
-            // Check if we need to advance to next character
-            if (timer_elapsed(animation_timer) >= ANIMATION_CHAR_DURATION) {
-                // Save current position as previous for fadeout
-                if (anim_key_found) {
-                    prev_anim_row = anim_row;
-                    prev_anim_col = anim_col;
-                    prev_anim_valid = true;
-                    prev_anim_timer = timer_read();
-                }
-                animation_index++;
-                animation_timer = timer_read();
-                // Check if animation finished
-                if (animation_index >= animation_length) {
-                    stop_animation();
-                    anim_key_found = false;
-                } else {
-                    // Update to new character position
-                    char current_char = animation_string[animation_index];
-                    anim_key_found = get_matrix_position_for_char(current_char, &anim_row, &anim_col);
-                }
-            }
-        }
-
-        // Calculate transition progress for previous key (0 = anim color, 255 = target color)
-        uint8_t transition_progress = 255;
-        if (prev_anim_valid) {
-            uint16_t elapsed = timer_elapsed(prev_anim_timer);
-            if (elapsed >= ANIMATION_CHAR_FADEOUT) {
-                prev_anim_valid = false;
-            } else {
-                transition_progress = (elapsed * 255) / ANIMATION_CHAR_FADEOUT;
-            }
-        }
-
-        // Render lighting
-        for (uint8_t row = 0; row < MATRIX_ROWS; ++row) {
-            for (uint8_t col = 0; col < MATRIX_COLS; ++col) {
-                uint8_t index = g_led_config.matrix_co[row][col];
-                if (index == NO_LED || index < led_min || index >= led_max) continue;
-
-                uint16_t keycode = keymap_key_to_keycode(STRINGS_LAYER, (keypos_t){col, row});
-                bool is_active_key = IS_STRING_MACRO(keycode);
-
-                // Current animation key - full brightness green
-                if (anim_key_found && row == anim_row && col == anim_col) {
-                    rgb_matrix_set_color(index, rgb_anim.r, rgb_anim.g, rgb_anim.b);
-                }
-                // Previous key - transition from anim color to target color
-                else if (prev_anim_valid && row == prev_anim_row && col == prev_anim_col) {
-                    // Target: rgb_strings for active keys, anim_preview for keys in string, off for others
-                    RGB target;
-                    if (is_active_key) {
-                        target = rgb_strings;
-                    } else if (is_key_in_animation_string(row, col)) {
-                        target = rgb_anim_preview;
-                    } else {
-                        target = (RGB){0, 0, 0};
-                    }
-                    // Linear interpolation: anim -> target
-                    uint8_t inv = 255 - transition_progress;
-                    RGB rgb_blend = {
-                        .r = (rgb_anim.r * inv + target.r * transition_progress) / 255,
-                        .g = (rgb_anim.g * inv + target.g * transition_progress) / 255,
-                        .b = (rgb_anim.b * inv + target.b * transition_progress) / 255
-                    };
-                    rgb_matrix_set_color(index, rgb_blend.r, rgb_blend.g, rgb_blend.b);
-                }
-                // Keys in animation string - preview
-                else if (animation_active && is_key_in_animation_string(row, col)) {
-                    rgb_matrix_set_color(index, rgb_anim_preview.r, rgb_anim_preview.g, rgb_anim_preview.b);
-                }
-                // Active keys with Fn held - pulsing
-                else if (fn_held_in_strings_layer && is_active_key) {
-                    rgb_matrix_set_color(index, rgb_strings_pulsing.r, rgb_strings_pulsing.g, rgb_strings_pulsing.b);
-                }
-                // Normal active keys
-                else if (is_active_key) {
-                    rgb_matrix_set_color(index, rgb_strings.r, rgb_strings.g, rgb_strings.b);
-                }
-                // Other keys - no highlight
-            }
-        }
-        return false;
+        return rgb_render_strings_layer(led_min, led_max, current_val);
     }
 
     uint8_t base_layer;
@@ -476,12 +479,15 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
     RGB rgb_pulsing_alt = hsv_to_rgb((HSV){hsv_static_alt.h, secondary_effective_sat, pulsing_val});
     RGB rgb_antiphase_pulsing_alt = hsv_to_rgb((HSV){hsv_static_alt.h, secondary_effective_sat, antiphase_pulsing_val});
 
+    bool is_mac_fn = layer_state_is(MAC_FN);
+    bool is_mac_f_layer = layer_state_is(MAC_F_LAYER);
+
     for (uint8_t row = 0; row < MATRIX_ROWS; ++row) {
         for (uint8_t col = 0; col < MATRIX_COLS; ++col) {
             uint8_t index = g_led_config.matrix_co[row][col];
             if (index == NO_LED || index < led_min || index >= led_max) { continue; }
             if (base_layer == MAC_BASE) {
-                handle_mac_lighting(row, col, index, &rgb_static_main, &rgb_static_alt, &rgb_pulsing_alt, &rgb_antiphase_pulsing_alt);
+                handle_mac_lighting(row, col, index, &rgb_static_main, &rgb_static_alt, &rgb_pulsing_alt, &rgb_antiphase_pulsing_alt, is_mac_fn, is_mac_f_layer);
             } else {
                 handle_win_lighting(row, col, index, &rgb_static_main);
             }
@@ -507,6 +513,48 @@ static void activate_strings_layer(void) {
     layer_on(STRINGS_LAYER);
 }
 
+// Process FN_TAP logic
+static bool process_fn_tap_logic(keyrecord_t *record, uint8_t fn_layer) {
+    if (record->event.pressed) {
+        // In STRINGS_LAYER: Fn press starts hold detection
+        if (strings_layer_active) {
+            fn_held_in_strings_layer = true;
+            fn_used_for_combo = false;
+            fn_strings_timer = timer_read();
+            return false;
+        }
+        // Check for double-tap to activate STRINGS_LAYER
+        if (fn_tap_pending && timer_elapsed(fn_tap_timer) < FN_TAP_TIMEOUT) {
+            fn_tap_pending = false;
+            activate_strings_layer();
+            return false;
+        }
+        // Normal hold — activate Fn layer
+        layer_on(fn_layer);
+        fn_tap_timer = timer_read();
+    } else {
+        // Release in STRINGS_LAYER
+        if (strings_layer_active && fn_held_in_strings_layer) {
+            // Tap (quick release without combo) = exit layer
+            if (!fn_used_for_combo && timer_elapsed(fn_strings_timer) < FN_TAP_TIMEOUT) {
+                deactivate_strings_layer();
+            }
+            fn_held_in_strings_layer = false;
+            fn_used_for_combo = false;
+            return false;
+        }
+        // Normal release
+        fn_held_in_strings_layer = false;
+        layer_off(fn_layer);
+        // Mark as pending tap if it was a quick tap
+        if (timer_elapsed(fn_tap_timer) < FN_TAP_TIMEOUT) {
+            fn_tap_pending = true;
+            fn_tap_timer = timer_read();
+        }
+    }
+    return false;
+}
+
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     if (!process_record_keychron_common(keycode, record)) {
         return false;
@@ -518,44 +566,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 
     // Handle FN_TAP
     if (keycode == FN_TAP) {
-        if (record->event.pressed) {
-            // In STRINGS_LAYER: Fn press starts hold detection
-            if (strings_layer_active) {
-                fn_held_in_strings_layer = true;
-                fn_used_for_combo = false;
-                fn_strings_timer = timer_read();
-                return false;
-            }
-            // Check for double-tap to activate STRINGS_LAYER
-            if (fn_tap_pending && timer_elapsed(fn_tap_timer) < FN_TAP_TIMEOUT) {
-                fn_tap_pending = false;
-                activate_strings_layer();
-                return false;
-            }
-            // Normal hold — activate Fn layer
-            layer_on(fn_layer);
-            fn_tap_timer = timer_read();
-        } else {
-            // Release in STRINGS_LAYER
-            if (strings_layer_active && fn_held_in_strings_layer) {
-                // Tap (quick release without combo) = exit layer
-                if (!fn_used_for_combo && timer_elapsed(fn_strings_timer) < FN_TAP_TIMEOUT) {
-                    deactivate_strings_layer();
-                }
-                fn_held_in_strings_layer = false;
-                fn_used_for_combo = false;
-                return false;
-            }
-            // Normal release
-            fn_held_in_strings_layer = false;
-            layer_off(fn_layer);
-            // Mark as pending tap if it was a quick tap
-            if (timer_elapsed(fn_tap_timer) < FN_TAP_TIMEOUT) {
-                fn_tap_pending = true;
-                fn_tap_timer = timer_read();
-            }
-        }
-        return false;
+        return process_fn_tap_logic(record, fn_layer);
     }
 
     // Reset fn_tap_pending on any other key press
