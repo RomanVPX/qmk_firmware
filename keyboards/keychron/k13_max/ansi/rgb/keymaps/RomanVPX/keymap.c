@@ -65,6 +65,7 @@ typedef struct {
     bool valid;
 } KeyPosCache;
 static KeyPosCache anim_cache[32]; // Max reasonable string length
+static uint32_t anim_key_mask[MATRIX_ROWS]; // Bitmask for O(1) key lookup
 
 // Get string for a string macro keycode
 static const char* get_string_for_keycode(uint16_t keycode) {
@@ -136,13 +137,15 @@ static void start_animation(uint16_t keycode) {
     animation_length = strlen(str);
     if (animation_length > 32) animation_length = 32;
 
-    // Pre-calculate positions
+    // Pre-calculate positions and build bitmask
+    memset(anim_key_mask, 0, sizeof(anim_key_mask));
     for (uint8_t i = 0; i < animation_length; i++) {
         uint8_t r, c;
         if (get_matrix_position_for_char(str[i], &r, &c)) {
             anim_cache[i].row = r;
             anim_cache[i].col = c;
             anim_cache[i].valid = true;
+            anim_key_mask[r] |= (1UL << c);
         } else {
             anim_cache[i].valid = false;
         }
@@ -154,15 +157,9 @@ static void start_animation(uint16_t keycode) {
     prev_anim_valid = false;
 }
 
-// Check if a key position is part of the animation string
-static bool is_key_in_animation_string(uint8_t row, uint8_t col) {
-    if (!animation_active || animation_length == 0) return false;
-    for (uint8_t i = 0; i < animation_length; i++) {
-        if (anim_cache[i].valid && anim_cache[i].row == row && anim_cache[i].col == col) {
-            return true;
-        }
-    }
-    return false;
+// Check if a key position is part of the animation string (O(1) via bitmask)
+static inline bool is_key_in_animation_string(uint8_t row, uint8_t col) {
+    return animation_active && (anim_key_mask[row] & (1UL << col));
 }
 
 
@@ -352,14 +349,15 @@ static bool rgb_render_strings_layer(uint8_t led_min, uint8_t led_max, uint8_t c
     hsv_preview.v = current_val;
     RGB rgb_anim_preview = hsv_to_rgb((HSV){hsv_preview.h, preview_effective_sat, current_val / STRINGS_LAYER_PREVIEW_DIV});
 
-    // Update animation state
+    // Update animation state using cached positions
     uint8_t anim_row = 0, anim_col = 0;
     bool anim_key_found = false;
     if (animation_active) {
-        // Get current character position first
-        if (animation_string != NULL) {
-            char current_char = animation_string[animation_index];
-            anim_key_found = get_matrix_position_for_char(current_char, &anim_row, &anim_col);
+        // Get current character position from cache
+        if (anim_cache[animation_index].valid) {
+            anim_row = anim_cache[animation_index].row;
+            anim_col = anim_cache[animation_index].col;
+            anim_key_found = true;
         }
         // Check if we need to advance to next character
         if (timer_elapsed(animation_timer) >= ANIMATION_CHAR_DURATION) {
@@ -377,9 +375,14 @@ static bool rgb_render_strings_layer(uint8_t led_min, uint8_t led_max, uint8_t c
                 stop_animation();
                 anim_key_found = false;
             } else {
-                // Update to new character position
-                char current_char = animation_string[animation_index];
-                anim_key_found = get_matrix_position_for_char(current_char, &anim_row, &anim_col);
+                // Update to new character position from cache
+                if (anim_cache[animation_index].valid) {
+                    anim_row = anim_cache[animation_index].row;
+                    anim_col = anim_cache[animation_index].col;
+                    anim_key_found = true;
+                } else {
+                    anim_key_found = false;
+                }
             }
         }
     }
