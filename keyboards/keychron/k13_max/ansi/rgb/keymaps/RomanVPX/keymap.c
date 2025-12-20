@@ -153,20 +153,6 @@ bool is_key_modified_in_layer(uint8_t row, uint8_t col, uint8_t base_layer, uint
     return (base_keycode != target_keycode) && (target_keycode != KC_TRNS) && (target_keycode != KC_NO);
 }
 
-// Функция для подсветки F-клавиш указанным цветом
-void highlight_f_keys(uint8_t led_min, uint8_t led_max, uint8_t r, uint8_t g, uint8_t b) {
-    for (uint8_t row = 0; row < MATRIX_ROWS; ++row) {
-        for (uint8_t col = 0; col < MATRIX_COLS; ++col) {
-            uint16_t keycode = keymap_key_to_keycode(MAC_F_LAYER, (keypos_t){col, row});
-            if (IS_F_KEYCODE(keycode)) {
-                uint8_t index = g_led_config.matrix_co[row][col];
-                if (index != NO_LED && index >= led_min && index < led_max) {
-                    rgb_matrix_set_color(index, r, g, b);
-                }
-            }
-        }
-    }
-}
 
 static inline void handle_mac_lighting(uint8_t row, uint8_t col, uint8_t index, const RGB* static_color_main, const RGB* static_color_alt, const RGB* pulsing_color, const RGB* antiphase_color) {
     uint16_t f_layer_keycode = keymap_key_to_keycode(MAC_F_LAYER, (keypos_t){col, row});
@@ -228,7 +214,7 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
     uint8_t current_val = INDICATOR_MAX_VALUE;
     if (current_val == 0) return false;
 
-    // STRINGS_LAYER has priority — show only string macro keys in yellow
+    // STRINGS_LAYER has priority
     if (strings_layer_active) {
         HSV hsv_strings = STRINGS_LAYER_COLOR_HSV;
         uint8_t strings_effective_sat = get_effective_sat(hsv_strings.s);
