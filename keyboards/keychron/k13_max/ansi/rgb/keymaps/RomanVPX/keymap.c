@@ -58,6 +58,14 @@ static uint8_t prev_anim_row = 0, prev_anim_col = 0;
 static bool prev_anim_valid = false;
 static uint16_t prev_anim_timer = 0;
 
+// Animation cache to improve RGB matrix performance
+typedef struct {
+    uint8_t row;
+    uint8_t col;
+    bool valid;
+} KeyPosCache;
+static KeyPosCache anim_cache[32]; // Max reasonable string length
+
 // Get string for a string macro keycode
 static const char* get_string_for_keycode(uint16_t keycode) {
     switch (keycode) {
@@ -126,6 +134,20 @@ static void start_animation(uint16_t keycode) {
 
     animation_string = str;
     animation_length = strlen(str);
+    if (animation_length > 32) animation_length = 32;
+
+    // Pre-calculate positions
+    for (uint8_t i = 0; i < animation_length; i++) {
+        uint8_t r, c;
+        if (get_matrix_position_for_char(str[i], &r, &c)) {
+            anim_cache[i].row = r;
+            anim_cache[i].col = c;
+            anim_cache[i].valid = true;
+        } else {
+            anim_cache[i].valid = false;
+        }
+    }
+
     animation_index = 0;
     animation_timer = timer_read();
     animation_active = true;
@@ -134,11 +156,10 @@ static void start_animation(uint16_t keycode) {
 
 // Check if a key position is part of the animation string
 static bool is_key_in_animation_string(uint8_t row, uint8_t col) {
-    if (!animation_active || animation_string == NULL) return false;
+    if (!animation_active || animation_length == 0) return false;
     for (uint8_t i = 0; i < animation_length; i++) {
-        uint8_t char_row, char_col;
-        if (get_matrix_position_for_char(animation_string[i], &char_row, &char_col)) {
-            if (char_row == row && char_col == col) return true;
+        if (anim_cache[i].valid && anim_cache[i].row == row && anim_cache[i].col == col) {
+            return true;
         }
     }
     return false;
@@ -289,13 +310,6 @@ static inline void handle_win_lighting(uint8_t row, uint8_t col, uint8_t index, 
     }
 }
 
-// Handles STRINGS_LAYER lighting: string macro keys are highlighted, others are off
-static inline void handle_strings_layer_lighting(uint8_t row, uint8_t col, uint8_t index, const RGB* highlight_color) {
-    uint16_t keycode = keymap_key_to_keycode(STRINGS_LAYER, (keypos_t){col, row});
-    if (IS_STRING_MACRO(keycode)) {
-        rgb_matrix_set_color(index, highlight_color->r, highlight_color->g, highlight_color->b);
-    }
-}
 
 static inline uint8_t get_effective_sat(uint8_t sat) {
     return scale8(sat, rgb_matrix_get_sat());
@@ -551,53 +565,32 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 
     // Handle keys while STRINGS_LAYER is active
     if (strings_layer_active && record->event.pressed) {
-        // Animation running?
         if (animation_active) {
             stop_animation();
-            // Fn + string macro = start new animation
-            if (fn_held_in_strings_layer && is_string_macro) {
-                fn_used_for_combo = true;
-                start_animation(keycode);
-                return false;
-            }
-            // Fn + empty = exit layer
-            if (fn_held_in_strings_layer && !is_string_macro) {
-                fn_used_for_combo = true;
-                deactivate_strings_layer();
-                return false;
-            }
-            // String macro without Fn = execute and exit
-            if (is_string_macro) {
-                deactivate_strings_layer();
-                // Fall through to execute macro below
-            } else {
-                // Empty key without Fn = just exit layer
-                deactivate_strings_layer();
-                return false;
-            }
+        }
+
+        // Fn + string macro = start new animation
+        if (fn_held_in_strings_layer && is_string_macro) {
+            fn_used_for_combo = true;
+            start_animation(keycode);
+            return false;
+        }
+
+        // Fn + empty = exit layer
+        if (fn_held_in_strings_layer && !is_string_macro) {
+            fn_used_for_combo = true;
+            deactivate_strings_layer();
+            return false;
+        }
+
+        // String macro without Fn = execute and exit
+        if (is_string_macro) {
+            deactivate_strings_layer();
+            // Fall through to execute macro below
         } else {
-            // No animation running
-            // Fn + string macro = start animation (don't exit layer)
-            if (fn_held_in_strings_layer && is_string_macro) {
-                fn_used_for_combo = true;
-                start_animation(keycode);
-                return false;
-            }
-            // Fn + empty = exit layer
-            if (fn_held_in_strings_layer && !is_string_macro) {
-                fn_used_for_combo = true;
-                deactivate_strings_layer();
-                return false;
-            }
-            // String macro without Fn = execute and exit
-            if (is_string_macro) {
-                deactivate_strings_layer();
-                // Fall through to execute macro below
-            } else {
-                // Empty key = just exit layer
-                deactivate_strings_layer();
-                return false;
-            }
+            // Empty key without Fn = just exit layer
+            deactivate_strings_layer();
+            return false;
         }
     }
 
