@@ -75,6 +75,15 @@ typedef struct {
 static KeyPosCache anim_cache[32]; // Max reasonable string length
 static uint32_t anim_key_mask[MATRIX_ROWS]; // Bitmask for O(1) key lookup
 
+
+static inline RGB rgb_lerp(RGB a, RGB b, uint8_t frac) {
+    RGB res;
+    res.r = lerp8by8(a.r, b.r, frac);
+    res.g = lerp8by8(a.g, b.g, frac);
+    res.b = lerp8by8(a.b, b.b, frac);
+    return res;
+}
+
 // Get string for a string macro keycode
 static const char* get_string_for_keycode(uint16_t keycode) {
     switch (keycode) {
@@ -314,10 +323,10 @@ static inline void handle_win_lighting(uint8_t row, uint8_t col, uint8_t index, 
     }
 }
 
-
 static inline uint8_t get_effective_sat(uint8_t sat) {
     return scale8(sat, rgb_matrix_get_sat());
 }
+
 
 #define INDICATOR_MAX_VALUE RGB_MATRIX_MAXIMUM_BRIGHTNESS
 #ifndef INDICATOR_MAX_VALUE
@@ -406,6 +415,10 @@ static bool rgb_render_strings_layer(uint8_t led_min, uint8_t led_max, uint8_t c
         }
     }
 
+    RGB blend_active = rgb_lerp(rgb_anim, rgb_strings, transition_progress);
+    RGB blend_preview = rgb_lerp(rgb_anim, rgb_anim_preview, transition_progress);
+    RGB blend_off = rgb_lerp(rgb_anim, (RGB){0,0,0}, transition_progress);
+
     // Render lighting
     for (uint8_t row = 0; row < MATRIX_ROWS; ++row) {
         for (uint8_t col = 0; col < MATRIX_COLS; ++col) {
@@ -419,26 +432,18 @@ static bool rgb_render_strings_layer(uint8_t led_min, uint8_t led_max, uint8_t c
             if (anim_key_found && row == anim_row && col == anim_col) {
                 rgb_matrix_set_color(index, rgb_anim.r, rgb_anim.g, rgb_anim.b);
             }
+
             // Previous key - transition from anim color to target color
             else if (prev_anim_valid && row == prev_anim_row && col == prev_anim_col) {
-                // Target: rgb_strings for active keys, anim_preview for keys in string, off for others
-                RGB target;
                 if (is_active_key) {
-                    target = rgb_strings;
+                    rgb_matrix_set_color(index, blend_active.r, blend_active.g, blend_active.b);
                 } else if (is_key_in_animation_string(row, col)) {
-                    target = rgb_anim_preview;
+                    rgb_matrix_set_color(index, blend_preview.r, blend_preview.g, blend_preview.b);
                 } else {
-                    target = (RGB){0, 0, 0};
+                    rgb_matrix_set_color(index, blend_off.r, blend_off.g, blend_off.b);
                 }
-                // Linear interpolation: anim -> target
-                uint8_t inv = 255 - transition_progress;
-                RGB rgb_blend = {
-                    .r = (rgb_anim.r * inv + target.r * transition_progress) / 255,
-                    .g = (rgb_anim.g * inv + target.g * transition_progress) / 255,
-                    .b = (rgb_anim.b * inv + target.b * transition_progress) / 255
-                };
-                rgb_matrix_set_color(index, rgb_blend.r, rgb_blend.g, rgb_blend.b);
             }
+
             // Keys in animation string - preview
             else if (animation_active && is_key_in_animation_string(row, col)) {
                 rgb_matrix_set_color(index, rgb_anim_preview.r, rgb_anim_preview.g, rgb_anim_preview.b);
