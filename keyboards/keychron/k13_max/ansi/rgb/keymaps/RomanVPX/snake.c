@@ -23,15 +23,15 @@ static const uint8_t PROGMEM snake_map[SNAKE_HEIGHT][SNAKE_WIDTH] = {
         2*M_COLS+1, 2*M_COLS+2, 2*M_COLS+3, 2*M_COLS+4, 2*M_COLS+5, 2*M_COLS+6,
         2*M_COLS+7, 2*M_COLS+8, 2*M_COLS+9, 2*M_COLS+10, 2*M_COLS+11, 2*M_COLS+12
     },
-    // Row 2 -> Physical Row 3 (A, S... ') - Last entries invalid to match width 12
+    // Row 2 -> Physical Row 3 (A, S... ') - Last 2 entries duplicated to match width 12
     {
         3*M_COLS+1, 3*M_COLS+2, 3*M_COLS+3, 3*M_COLS+4, 3*M_COLS+5, 3*M_COLS+6,
-        3*M_COLS+7, 3*M_COLS+8, 3*M_COLS+9, 3*M_COLS+10, 3*M_COLS+11, 0xFF
+        3*M_COLS+7, 3*M_COLS+8, 3*M_COLS+9, 3*M_COLS+10, 3*M_COLS+11, 3*M_COLS+11
     },
-    // Row 3 -> Physical Row 4 (Z, X... /) - Last entries invalid
+    // Row 3 -> Physical Row 4 (Z, X... /) - Last 3 entries duplicated to match width 12
     {
         4*M_COLS+2, 4*M_COLS+3, 4*M_COLS+4, 4*M_COLS+5, 4*M_COLS+6, 4*M_COLS+7,
-        4*M_COLS+8, 4*M_COLS+9, 4*M_COLS+10, 4*M_COLS+11, 0xFF, 0xFF
+        4*M_COLS+8, 4*M_COLS+9, 4*M_COLS+10, 4*M_COLS+11, 4*M_COLS+11, 4*M_COLS+11
     }
 };
 
