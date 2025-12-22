@@ -196,33 +196,29 @@ void snake_game_task(void) {
 bool snake_game_process_record(uint16_t keycode, keyrecord_t *record) {
     if (!snake_active) return true;
 
-    if (record->event.pressed) {
-        switch (keycode) {
-            case KC_UP:
-            case HYPR(KC_UP):
-                snake_push_input(1);
-                return false;
-            case KC_DOWN:
-            case HYPR(KC_DOWN):
-                snake_push_input(2);
-                return false;
-            case KC_LEFT:
-            case HYPR(KC_LEFT):
-                snake_push_input(3);
-                return false;
-            case KC_RIGHT:
-            case HYPR(KC_RIGHT):
-                snake_push_input(4);
-                return false;
-            case KC_ESC:
-                snake_game_stop();
-                return false;
-            default:
-                // Ignore other keys
-                return false;
-        }
+    switch (keycode) {
+        case KC_UP:
+            if (record->event.pressed) snake_push_input(1);
+            return false;
+        case KC_DOWN:
+            if (record->event.pressed) snake_push_input(2);
+            return false;
+        case KC_LEFT:
+            if (record->event.pressed) snake_push_input(3);
+            return false;
+        case KC_RIGHT:
+            if (record->event.pressed) snake_push_input(4);
+            return false;
+        case KC_ESC:
+            if (record->event.pressed) snake_game_stop();
+            return false;
     }
-    return false; // Consume releases too
+
+    if (record->event.pressed) {
+        return false;
+    }
+
+    return true;
 }
 
 // Hook for rgb_matrix_indicators_advanced_user
