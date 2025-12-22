@@ -18,6 +18,7 @@
 #include "keychron_common.h"
 #include <lib/lib8tion/lib8tion.h>
 #include <string.h>
+#include "snake.c"
 
 enum layers {
     MAC_BASE,
@@ -35,6 +36,7 @@ enum custom_keycodes {
     STRNG_LAST,
     TOGGLE_F_LAYER,
     FN_TAP,
+    RUN_SNAKE
 };
 
 // Double-tap detection for FN_TAP
@@ -220,7 +222,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 
     [MAC_FN] = LAYOUT_ansi_90(
         _______,            _______,  _______,  _______,  _______,  _______,  _______,  _______,    _______,     _______,  _______,  _______,   _______, XXXXXXX,  XXXXXXX,  XXXXXXX,
-        _______,  BT_HST1,  BT_HST2,  BT_HST3,  P2P4G,    _______,  _______,  _______,  _______,    _______,     _______,  _______,  _______,   _______, _______,  _______, _______,
+        _______,  BT_HST1,  BT_HST2,  BT_HST3,  P2P4G,    _______,  _______,  _______,  _______,    _______,     _______,  _______,  _______,   _______, RUN_SNAKE,_______, _______,
         RGB_TOG,  RGB_MOD,  _______,  RGB_HUI,  RGB_SAI,  RGB_SPI,  _______,  _______,  _______,    _______,     _______,  _______,  _______,   _______, _______,  _______,  _______,
         QK_BOOT,  RGB_RMOD, _______,  RGB_HUD,  RGB_SAD,  RGB_SPD,  _______,  _______,  _______, TOGGLE_F_LAYER, _______,  _______,             _______,  HYP_P1,  _______,  HYP_P3,
         _______,            _______,  _______,  _______,  _______,  BAT_LVL,  NK_TOGG,  _______,    _______,     _______,  _______,             _______,           _______,
@@ -360,7 +362,6 @@ static bool rgb_render_strings_layer(uint8_t led_min, uint8_t led_max, uint8_t c
     uint8_t anim_effective_sat = get_effective_sat(hsv_anim.s);
     RGB rgb_anim = hsv_to_rgb((HSV){hsv_anim.h, anim_effective_sat, current_val});
 
-    // Animation preview color (yellow at half brightness)
     HSV hsv_preview = STRINGS_LAYER_PREVIEW_COLOR_HSV;
     uint8_t preview_effective_sat = get_effective_sat(hsv_preview.s);
     hsv_preview.v = current_val;
@@ -463,6 +464,10 @@ static bool rgb_render_strings_layer(uint8_t led_min, uint8_t led_max, uint8_t c
 }
 
 bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
+    if (snake_is_active()) {
+        snake_game_render();
+        return false;
+    }
     uint8_t current_val = INDICATOR_MAX_VALUE;
     if (current_val == 0) return false;
 
@@ -579,6 +584,9 @@ static bool process_fn_tap_logic(keyrecord_t *record, uint8_t fn_layer) {
 }
 
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
+    if (!snake_game_process_record(keycode, record)) {
+        return false;
+    }
     if (!process_record_keychron_common(keycode, record)) {
         return false;
     }
@@ -638,9 +646,19 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 }
             } return false;
 
+        case RUN_SNAKE:
+            if (record->event.pressed) {
+                snake_game_start();
+            }
+            return false;
+
         #define STRNG_X(name, str) case name: if (record->event.pressed) { SEND_STRING(str); } return false;
         #include "strng.inc"
     }
 
     return true;
+}
+
+void matrix_scan_user(void) {
+    snake_game_task();
 }
