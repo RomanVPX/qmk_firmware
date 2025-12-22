@@ -5,6 +5,8 @@
 #define SNAKE_MAX_LENGTH (SNAKE_WIDTH * SNAKE_HEIGHT)
 #define SNAKE_SPEED_MS 400
 
+#define INPUT_BUFFER_SIZE 3
+
 // Matrix Cols is 17 for K13 Max
 #define M_COLS 17
 
@@ -43,6 +45,7 @@ static bool snake_active = false;
 bool snake_is_active(void) {
     return snake_active;
 }
+
 static uint32_t snake_timer = 0;
 static SnakePoint snake_body[SNAKE_MAX_LENGTH];
 static uint8_t snake_len = 0;
@@ -52,6 +55,25 @@ static int8_t snake_dir_y = 0;
 static int8_t snake_next_dir_x = 1;
 static int8_t snake_next_dir_y = 0;
 static bool snake_game_over = false;
+
+static uint8_t input_buffer[INPUT_BUFFER_SIZE];
+static uint8_t input_head = 0;
+static uint8_t input_tail = 0;
+
+static void snake_push_input(uint8_t dir_code) {
+    uint8_t next = (input_head + 1) % INPUT_BUFFER_SIZE;
+    if (next != input_tail) {
+        input_buffer[input_head] = dir_code;
+        input_head = next;
+    }
+}
+
+static uint8_t snake_pop_input(void) {
+    if (input_head == input_tail) return 0;
+    uint8_t val = input_buffer[input_tail];
+    input_tail = (input_tail + 1) % INPUT_BUFFER_SIZE;
+    return val;
+}
 
 // Helper to get LED index from matrix index
 static uint8_t get_led_index_from_matrix(uint8_t matrix_idx) {
@@ -85,6 +107,11 @@ static void snake_spawn_food(void) {
 
 void snake_game_start(void) {
     snake_active = true;
+
+    // Clear input buffer
+    input_head = 0;
+    input_tail = 0;
+
     snake_game_over = false;
     snake_len = 3;
     snake_body[0] = (SnakePoint){2, 1};
@@ -109,10 +136,13 @@ void snake_game_stop(void) {
 static void snake_update(void) {
     if (snake_game_over) return;
 
-    // Apply next direction
-    if (snake_next_dir_x != -snake_dir_x || snake_next_dir_y != -snake_dir_y) {
-        snake_dir_x = snake_next_dir_x;
-        snake_dir_y = snake_next_dir_y;
+    uint8_t next_move = snake_pop_input();
+
+    if (next_move != 0) {
+        if (next_move == 1 && snake_dir_y == 0) { snake_dir_x = 0; snake_dir_y = -1; }
+        else if (next_move == 2 && snake_dir_y == 0) { snake_dir_x = 0; snake_dir_y = 1; }
+        else if (next_move == 3 && snake_dir_x == 0) { snake_dir_x = -1; snake_dir_y = 0; }
+        else if (next_move == 4 && snake_dir_x == 0) { snake_dir_x = 1; snake_dir_y = 0; }
     }
 
     SnakePoint new_head = {
@@ -170,19 +200,19 @@ bool snake_game_process_record(uint16_t keycode, keyrecord_t *record) {
         switch (keycode) {
             case KC_UP:
             case HYPR(KC_UP):
-                if (snake_dir_y == 0) { snake_next_dir_x = 0; snake_next_dir_y = -1; }
+                snake_push_input(1);
                 return false;
             case KC_DOWN:
             case HYPR(KC_DOWN):
-                if (snake_dir_y == 0) { snake_next_dir_x = 0; snake_next_dir_y = 1; }
+                snake_push_input(2);
                 return false;
             case KC_LEFT:
             case HYPR(KC_LEFT):
-                if (snake_dir_x == 0) { snake_next_dir_x = -1; snake_next_dir_y = 0; }
+                snake_push_input(3);
                 return false;
             case KC_RIGHT:
             case HYPR(KC_RIGHT):
-                if (snake_dir_x == 0) { snake_next_dir_x = 1; snake_next_dir_y = 0; }
+                snake_push_input(4);
                 return false;
             case KC_ESC:
                 snake_game_stop();
