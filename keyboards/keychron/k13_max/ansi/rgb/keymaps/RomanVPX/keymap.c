@@ -16,10 +16,10 @@
 
 #include QMK_KEYBOARD_H
 #include "keychron_common.h"
-#include <lib/lib8tion/lib8tion.h>
 #include <string.h>
-#include "snake.c"
-#include "life.c"
+#include "rgb_utils.h"
+#include "snake.h"
+#include "life.h"
 
 enum layers {
     MAC_BASE,
@@ -78,15 +78,6 @@ typedef struct {
 } KeyPosCache;
 static KeyPosCache anim_cache[32]; // Max reasonable string length
 static uint32_t anim_key_mask[MATRIX_ROWS]; // Bitmask for O(1) key lookup
-
-
-static inline RGB rgb_lerp(RGB a, RGB b, uint8_t frac) {
-    RGB res;
-    res.r = lerp8by8(a.r, b.r, frac);
-    res.g = lerp8by8(a.g, b.g, frac);
-    res.b = lerp8by8(a.b, b.b, frac);
-    return res;
-}
 
 // Get string for a string macro keycode
 static const char* get_string_for_keycode(uint16_t keycode) {

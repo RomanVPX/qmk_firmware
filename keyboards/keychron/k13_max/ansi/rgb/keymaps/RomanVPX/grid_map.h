@@ -70,8 +70,13 @@ static inline uint8_t get_led_index_from_matrix(uint8_t matrix_idx) {
     if (matrix_idx == 0xFF) return NO_LED;
     uint8_t r = matrix_idx / M_COLS;
     uint8_t c = matrix_idx % M_COLS;
-    // Safety check
     if (r >= MATRIX_ROWS || c >= MATRIX_COLS) return NO_LED;
     return g_led_config.matrix_co[r][c];
+}
+
+// Get LED index for grid position (returns NO_LED if invalid)
+static inline uint8_t grid_get_led(uint8_t y, uint8_t x) {
+    uint8_t m_idx = pgm_read_byte(&GRID_MAP[y][x]);
+    return (m_idx != 0xFF) ? get_led_index_from_matrix(m_idx) : NO_LED;
 }
 #endif // GRID_MAP_INCLUDED

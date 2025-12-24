@@ -1,5 +1,5 @@
 #include "grid_map.h"
-#include <lib/lib8tion/lib8tion.h>
+#include "rgb_utils.h"
 
 #define LIFE_WIDTH GRID_WIDTH
 #define LIFE_HEIGHT GRID_HEIGHT
@@ -37,10 +37,6 @@ static inline void init_random_pattern(void) {
             }
         }
     }
-}
-
-static inline RGB rgb_from_define(uint8_t r, uint8_t g, uint8_t b) {
-    return (RGB){ .r = r, .g = g, .b = b };
 }
 
 void life_game_start(void) {
@@ -149,25 +145,13 @@ bool life_game_process_record(uint16_t keycode, keyrecord_t *record) {
     return false;
 }
 
-
-static inline RGB life_rgb_lerp(RGB* a, RGB* b, uint8_t frac) {
-    return (RGB) {
-        .r = lerp8by8(a->r, b->r, frac),
-        .g = lerp8by8(a->g, b->g, frac),
-        .b = lerp8by8(a->b, b->b, frac)
-    };
-}
-
 void life_game_render(void) {
     if (!life_active) return;
 
-    // Clear "screen"
-    for (uint8_t i = 0; i < RGB_MATRIX_LED_COUNT; i++) {
-        rgb_matrix_set_color(i, 0, 0, 0);
-    }
+    rgb_clear_all();
 
-    RGB bg_color = rgb_from_define(LIFE_COLOR_BG);
-    RGB target_color = rgb_from_define(LIFE_COLOR_DYING);
+    RGB bg_color = rgb_make(LIFE_COLOR_BG);
+    RGB target_color = rgb_make(LIFE_COLOR_DYING);
 
     for (uint8_t y = 0; y < LIFE_HEIGHT; y++) {
         for (uint8_t x = 0; x < LIFE_WIDTH; x++) {
@@ -177,19 +161,16 @@ void life_game_render(void) {
                 life_display_grid[y][x] = qsub8(life_display_grid[y][x], LIFE_FADE_SUB);
             }
 
-            uint8_t m_idx = pgm_read_byte(&GRID_MAP[y][x]);
-            if (m_idx != 0xFF) {
-                uint8_t l_idx = get_led_index_from_matrix(m_idx);
-                if (l_idx != NO_LED) {
-                    uint8_t val = life_display_grid[y][x];
-                    if (val == DISPLAY_ALIVE) {
-                        rgb_matrix_set_color(l_idx, LIFE_COLOR_ALIVE);
-                    } else if (val > DISPLAY_DEAD) {
-                        RGB dying_color = life_rgb_lerp(&bg_color, &target_color, val);
-                        rgb_matrix_set_color(l_idx, dying_color.r, dying_color.g, dying_color.b);
-                    } else {
-                        rgb_matrix_set_color(l_idx, LIFE_COLOR_BG);
-                    }
+            uint8_t l_idx = grid_get_led(y, x);
+            if (l_idx != NO_LED) {
+                uint8_t val = life_display_grid[y][x];
+                if (val == DISPLAY_ALIVE) {
+                    rgb_matrix_set_color(l_idx, LIFE_COLOR_ALIVE);
+                } else if (val > DISPLAY_DEAD) {
+                    RGB dying_color = rgb_lerp(bg_color, target_color, val);
+                    rgb_matrix_set_color(l_idx, dying_color.r, dying_color.g, dying_color.b);
+                } else {
+                    rgb_matrix_set_color(l_idx, LIFE_COLOR_BG);
                 }
             }
         }

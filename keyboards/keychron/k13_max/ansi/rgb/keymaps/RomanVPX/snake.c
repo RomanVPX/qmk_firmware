@@ -1,5 +1,6 @@
 #define GRID_SNAKE
 #include "grid_map.h"
+#include "rgb_utils.h"
 
 #define SNAKE_WIDTH GRID_WIDTH
 #define SNAKE_HEIGHT GRID_HEIGHT
@@ -194,48 +195,36 @@ bool snake_game_process_record(uint16_t keycode, keyrecord_t *record) {
 void snake_game_render(void) {
     if (!snake_active) return;
 
-    // Clear screen
-    for (uint8_t i = 0; i < RGB_MATRIX_LED_COUNT; i++) {
-        rgb_matrix_set_color(i, 0, 0, 0);
-    }
+    rgb_clear_all();
 
     // Draw Background
     for (uint8_t y = 0; y < SNAKE_HEIGHT; y++) {
         for (uint8_t x = 0; x < SNAKE_WIDTH; x++) {
-            uint8_t m_idx = pgm_read_byte(&GRID_MAP[y][x]);
-            if (m_idx != 0xFF) {
-                 uint8_t l_idx = get_led_index_from_matrix(m_idx);
-                 if (l_idx != NO_LED) rgb_matrix_set_color(l_idx, SNAKE_COLOR_BG);
-            }
+            uint8_t l_idx = grid_get_led(y, x);
+            if (l_idx != NO_LED) rgb_matrix_set_color(l_idx, SNAKE_COLOR_BG);
         }
     }
 
     if (snake_game_over) {
-        // Full snake body on death
         for (uint8_t i = 0; i < snake_len; i++) {
-             uint8_t m_idx = pgm_read_byte(&GRID_MAP[snake_body[i].y][snake_body[i].x]);
-             uint8_t l_idx = get_led_index_from_matrix(m_idx);
-             if (l_idx != NO_LED) rgb_matrix_set_color(l_idx, SNAKE_COLOR_DEATH);
+            uint8_t l_idx = grid_get_led(snake_body[i].y, snake_body[i].x);
+            if (l_idx != NO_LED) rgb_matrix_set_color(l_idx, SNAKE_COLOR_DEATH);
         }
         return;
     }
 
     // Draw Food
-    uint8_t f_m_idx = pgm_read_byte(&GRID_MAP[snake_food.y][snake_food.x]);
-    uint8_t f_l_idx = get_led_index_from_matrix(f_m_idx);
-    if (f_l_idx != NO_LED) {
-        rgb_matrix_set_color(f_l_idx, SNAKE_COLOR_FOOD);
-    }
+    uint8_t l_idx = grid_get_led(snake_food.y, snake_food.x);
+    if (l_idx != NO_LED) rgb_matrix_set_color(l_idx, SNAKE_COLOR_FOOD);
 
     // Draw Snake
     for (uint8_t i = 0; i < snake_len; i++) {
-        uint8_t m_idx = pgm_read_byte(&GRID_MAP[snake_body[i].y][snake_body[i].x]);
-        uint8_t l_idx = get_led_index_from_matrix(m_idx);
+        l_idx = grid_get_led(snake_body[i].y, snake_body[i].x);
         if (l_idx != NO_LED) {
             if (i == 0) {
-                 rgb_matrix_set_color(l_idx, SNAKE_COLOR_HEAD);
+                rgb_matrix_set_color(l_idx, SNAKE_COLOR_HEAD);
             } else {
-                 rgb_matrix_set_color(l_idx, SNAKE_COLOR_BODY);
+                rgb_matrix_set_color(l_idx, SNAKE_COLOR_BODY);
             }
         }
     }
