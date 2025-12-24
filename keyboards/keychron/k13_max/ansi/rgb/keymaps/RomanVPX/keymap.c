@@ -19,8 +19,7 @@
 #include <string.h>
 #include "rgb_utils.h"
 #include "matrix_utils.h"
-#include "snake.h"
-#include "life.h"
+#include "game_interface.h"
 
 enum layers {
     MAC_BASE,
@@ -440,12 +439,7 @@ static bool rgb_render_strings_layer(uint8_t led_min, uint8_t led_max, uint8_t c
 }
 
 bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
-    if (snake_is_active()) {
-        snake_game_render();
-        return false;
-    }
-    if (life_is_active()) {
-        life_game_render();
+    if (games_render()) {
         return false;
     }
     uint8_t current_val = INDICATOR_MAX_VALUE;
@@ -555,10 +549,7 @@ static bool process_fn_tap_logic(keyrecord_t *record, uint8_t fn_layer) {
 }
 
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
-    if (!snake_game_process_record(keycode, record)) {
-        return false;
-    }
-    if (!life_game_process_record(keycode, record)) {
+    if (!games_process_record(keycode, record)) {
         return false;
     }
     if (!process_record_keychron_common(keycode, record)) {
@@ -640,6 +631,5 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 }
 
 void matrix_scan_user(void) {
-    snake_game_task();
-    life_game_task();
+    games_task();
 }
