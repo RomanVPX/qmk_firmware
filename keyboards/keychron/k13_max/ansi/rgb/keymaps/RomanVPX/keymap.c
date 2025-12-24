@@ -32,7 +32,7 @@ enum layers {
 enum custom_keycodes {
     STRNG_FIRST = SAFE_RANGE - 1,
     #define STRNG_X(name, str) name,
-    #include "strng.inc"
+    #include "strng_x.inc"
     STRNG_LAST,
     TOGGLE_F_LAYER,
     FN_TAP,
@@ -90,7 +90,7 @@ static inline RGB rgb_lerp(RGB a, RGB b, uint8_t frac) {
 static const char* get_string_for_keycode(uint16_t keycode) {
     switch (keycode) {
         #define STRNG_X(name, str) case name: return str;
-        #include "strng.inc"
+        #include "strng_x.inc"
     }
     return NULL;
 }
@@ -653,7 +653,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             return false;
 
         #define STRNG_X(name, str) case name: if (record->event.pressed) { SEND_STRING(str); } return false;
-        #include "strng.inc"
+        #include "strng_x.inc"
     }
 
     return true;
