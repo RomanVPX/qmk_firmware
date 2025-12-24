@@ -5,7 +5,13 @@
 #define SNAKE_MAX_LENGTH (SNAKE_WIDTH * SNAKE_HEIGHT)
 #define SNAKE_SPEED_MS 400
 
-#define INPUT_BUFFER_SIZE 3
+#define SNAKE_COLOR_HEAD     RGB_CYAN
+#define SNAKE_COLOR_BODY     RGB_GREEN
+#define SNAKE_COLOR_FOOD     RGB_RED
+#define SNAKE_COLOR_DEATH    RGB_RED
+#define SNAKE_COLOR_BG       22, 10, 30
+
+#define INPUT_BUFFER_SIZE 5
 
 // Matrix Cols is 17 for K13 Max
 #define M_COLS 17
@@ -230,32 +236,43 @@ void snake_game_render(void) {
         rgb_matrix_set_color(i, 0, 0, 0);
     }
 
+    // Draw Background
+    for (uint8_t y = 0; y < SNAKE_HEIGHT; y++) {
+        for (uint8_t x = 0; x < SNAKE_WIDTH; x++) {
+            uint8_t m_idx = pgm_read_byte(&snake_map[y][x]);
+            if (m_idx != 0xFF) {
+                 uint8_t l_idx = get_led_index_from_matrix(m_idx);
+                 if (l_idx != NO_LED) rgb_matrix_set_color(l_idx, SNAKE_COLOR_BG);
+            }
+        }
+    }
+
     if (snake_game_over) {
-        // Red full board or something?
+        // Full snake body on death
         for (uint8_t i = 0; i < snake_len; i++) {
              uint8_t m_idx = pgm_read_byte(&snake_map[snake_body[i].y][snake_body[i].x]);
              uint8_t l_idx = get_led_index_from_matrix(m_idx);
-             if (l_idx != NO_LED) rgb_matrix_set_color(l_idx, 255, 0, 0);
+             if (l_idx != NO_LED) rgb_matrix_set_color(l_idx, SNAKE_COLOR_DEATH);
         }
         return;
     }
 
-    // Draw Food (Red)
+    // Draw Food
     uint8_t f_m_idx = pgm_read_byte(&snake_map[snake_food.y][snake_food.x]);
     uint8_t f_l_idx = get_led_index_from_matrix(f_m_idx);
     if (f_l_idx != NO_LED) {
-        rgb_matrix_set_color(f_l_idx, 255, 0, 0);
+        rgb_matrix_set_color(f_l_idx, SNAKE_COLOR_FOOD);
     }
 
-    // Draw Snake (Green)
+    // Draw Snake
     for (uint8_t i = 0; i < snake_len; i++) {
         uint8_t m_idx = pgm_read_byte(&snake_map[snake_body[i].y][snake_body[i].x]);
         uint8_t l_idx = get_led_index_from_matrix(m_idx);
         if (l_idx != NO_LED) {
             if (i == 0) {
-                 rgb_matrix_set_color(l_idx, 0, 255, 255); // Cyan head
+                 rgb_matrix_set_color(l_idx, SNAKE_COLOR_HEAD);
             } else {
-                 rgb_matrix_set_color(l_idx, 0, 255, 0);
+                 rgb_matrix_set_color(l_idx, SNAKE_COLOR_BODY);
             }
         }
     }
