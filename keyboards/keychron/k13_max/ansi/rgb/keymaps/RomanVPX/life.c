@@ -1,4 +1,3 @@
-#include QMK_KEYBOARD_H
 #include "grid_map.h"
 
 #define LIFE_WIDTH GRID_WIDTH
@@ -42,12 +41,11 @@ static uint8_t count_neighbors(int8_t x, int8_t y) {
         for (int8_t dx = -1; dx <= 1; dx++) {
             if (dx == 0 && dy == 0) continue;
 
-            int8_t nx = x + dx;
-            int8_t ny = y + dy;
+            // Cyclic boundary conditions - toroidal grid
+            int8_t nx = (x + dx + LIFE_WIDTH) % LIFE_WIDTH;
+            int8_t ny = (y + dy + LIFE_HEIGHT) % LIFE_HEIGHT;
 
-            if (nx >= 0 && nx < LIFE_WIDTH && ny >= 0 && ny < LIFE_HEIGHT) {
-                if (life_grid[ny][nx]) count++;
-            }
+            if (life_grid[ny][nx]) count++;
         }
     }
     return count;
@@ -96,7 +94,7 @@ bool life_game_process_record(uint16_t keycode, keyrecord_t *record) {
 
         for (uint8_t y = 0; y < LIFE_HEIGHT; y++) {
             for (uint8_t x = 0; x < LIFE_WIDTH; x++) {
-                 if (pgm_read_byte(&grid_map[y][x]) == matrix_idx) {
+                 if (pgm_read_byte(&grid_map_clamp[y][x]) == matrix_idx) {
                      life_grid[y][x] = !life_grid[y][x];
                      return false; // Consume key - toggle cell state
                  }
@@ -119,7 +117,7 @@ void life_game_render(void) {
 
     for (uint8_t y = 0; y < LIFE_HEIGHT; y++) {
         for (uint8_t x = 0; x < LIFE_WIDTH; x++) {
-            uint8_t m_idx = pgm_read_byte(&grid_map[y][x]);
+            uint8_t m_idx = pgm_read_byte(&grid_map_clamp[y][x]);
             if (m_idx != 0xFF) {
                  uint8_t l_idx = get_led_index_from_matrix(m_idx);
                  if (l_idx != NO_LED) {
