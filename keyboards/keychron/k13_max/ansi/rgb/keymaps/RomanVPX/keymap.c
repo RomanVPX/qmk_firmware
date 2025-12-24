@@ -320,11 +320,6 @@ static inline void handle_win_lighting(uint8_t row, uint8_t col, uint8_t index, 
     }
 }
 
-static inline uint8_t get_effective_sat(uint8_t sat) {
-    return scale8(sat, rgb_matrix_get_sat());
-}
-
-
 #define INDICATOR_MAX_VALUE RGB_MATRIX_MAXIMUM_BRIGHTNESS
 #ifndef INDICATOR_MAX_VALUE
     #define INDICATOR_MAX_VALUE rgb_matrix_get_val()
@@ -338,29 +333,23 @@ static inline uint8_t get_effective_sat(uint8_t sat) {
 #define STRINGS_LAYER_PREVIEW_COLOR_HSV (HSV){HSV_WHITE}
 #define STRINGS_LAYER_PREVIEW_DIV       2
 
-#define PULSING_SPEED_DIV               2
-#define PULSING_MIN_VALUE_DIV           3
-
 static bool rgb_render_strings_layer(uint8_t led_min, uint8_t led_max, uint8_t current_val) {
-    // Pulsing for Fn hold
-    uint8_t sin_wave = sin8(timer_read() >> PULSING_SPEED_DIV);
-    uint8_t min_v = current_val / PULSING_MIN_VALUE_DIV;
-    uint8_t pulsing_val = min_v + scale8(sin_wave, current_val - min_v);
+    PulsingConfig pulsing_cfg = PULSING_CONFIG_DEFAULT;
 
+    // Colors with effective saturation
     HSV hsv_strings = STRINGS_LAYER_COLOR_HSV;
-    uint8_t strings_effective_sat = get_effective_sat(hsv_strings.s);
-    RGB rgb_strings = hsv_to_rgb((HSV){hsv_strings.h, strings_effective_sat, current_val});
-    RGB rgb_strings_pulsing = hsv_to_rgb((HSV){hsv_strings.h, strings_effective_sat, pulsing_val});
+    hsv_strings.v = current_val;
+    RGB rgb_strings = hsv_to_rgb_effective(hsv_strings);
+    RGB rgb_strings_pulsing = rgb_pulsing(hsv_strings, current_val, pulsing_cfg);
 
     // Animation color
     HSV hsv_anim = STRINGS_ANIMATION_COLOR_HSV;
-    uint8_t anim_effective_sat = get_effective_sat(hsv_anim.s);
-    RGB rgb_anim = hsv_to_rgb((HSV){hsv_anim.h, anim_effective_sat, current_val});
+    hsv_anim.v = current_val;
+    RGB rgb_anim = hsv_to_rgb_effective(hsv_anim);
 
     HSV hsv_preview = STRINGS_LAYER_PREVIEW_COLOR_HSV;
-    uint8_t preview_effective_sat = get_effective_sat(hsv_preview.s);
-    hsv_preview.v = current_val;
-    RGB rgb_anim_preview = hsv_to_rgb((HSV){hsv_preview.h, preview_effective_sat, current_val / STRINGS_LAYER_PREVIEW_DIV});
+    hsv_preview.v = current_val / STRINGS_LAYER_PREVIEW_DIV;
+    RGB rgb_anim_preview = hsv_to_rgb_effective(hsv_preview);
 
     // Update animation state using cached positions
     uint8_t anim_row = 0, anim_col = 0;
@@ -482,22 +471,17 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
         base_layer = IS_LAYER_ON(WIN_BASE) ? WIN_BASE : MAC_BASE;
     }
     // --- Анимация и цвета ---
-    uint8_t sin_wave = sin8(timer_read() >> PULSING_SPEED_DIV); // timer_read() возвращает миллисекунды. Сдвиг вправо замедляет анимацию.
-    uint8_t antiphase_sin_wave = 255 - sin_wave;
-    uint8_t max_v = current_val;
-    uint8_t min_v = max_v / PULSING_MIN_VALUE_DIV;
-    uint8_t pulsing_val = min_v + scale8(sin_wave, max_v - min_v); // scale8 — быстрая 8-битная функция умножения (a * b) / 255.
-    uint8_t antiphase_pulsing_val = min_v + scale8(antiphase_sin_wave, max_v - min_v);
+    PulsingConfig pulsing_cfg = PULSING_CONFIG_DEFAULT;
 
     HSV hsv_static_main = MAIN_COLOR_HSV;
-    uint8_t main_effective_sat = get_effective_sat(hsv_static_main.s);
-    RGB rgb_static_main = hsv_to_rgb((HSV){hsv_static_main.h, main_effective_sat, current_val});
+    hsv_static_main.v = current_val;
+    RGB rgb_static_main = hsv_to_rgb_effective(hsv_static_main);
 
     HSV hsv_static_alt = SECONDARY_COLOR_HSV;
-    uint8_t secondary_effective_sat = get_effective_sat(hsv_static_alt.s);
-    RGB rgb_static_alt = hsv_to_rgb((HSV){hsv_static_alt.h, secondary_effective_sat, current_val});
-    RGB rgb_pulsing_alt = hsv_to_rgb((HSV){hsv_static_alt.h, secondary_effective_sat, pulsing_val});
-    RGB rgb_antiphase_pulsing_alt = hsv_to_rgb((HSV){hsv_static_alt.h, secondary_effective_sat, antiphase_pulsing_val});
+    hsv_static_alt.v = current_val;
+    RGB rgb_static_alt = hsv_to_rgb_effective(hsv_static_alt);
+    RGB rgb_pulsing_alt = rgb_pulsing(hsv_static_alt, current_val, pulsing_cfg);
+    RGB rgb_antiphase_pulsing_alt = rgb_pulsing_antiphase(hsv_static_alt, current_val, pulsing_cfg);
 
     bool is_mac_fn = layer_state_is(MAC_FN);
     bool is_mac_f_layer = layer_state_is(MAC_F_LAYER);

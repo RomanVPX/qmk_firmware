@@ -23,3 +23,53 @@ static inline void rgb_clear_all(void) {
         rgb_matrix_set_color(i, 0, 0, 0);
     }
 }
+
+// Get effective saturation scaled by global RGB matrix saturation
+static inline uint8_t rgb_get_effective_sat(uint8_t sat) {
+    return scale8(sat, rgb_matrix_get_sat());
+}
+
+// Convert HSV to RGB with automatic effective saturation calculation
+static inline RGB hsv_to_rgb_effective(HSV hsv) {
+    hsv.s = rgb_get_effective_sat(hsv.s);
+    return hsv_to_rgb(hsv);
+}
+
+// Configuration for pulsing effect
+typedef struct {
+    uint8_t speed_divisor;    // Right shift amount for timer (higher = slower)
+    uint8_t min_value_divisor; // Divisor for minimum brightness (higher = darker minimum)
+} PulsingConfig;
+
+// Default pulsing parameters
+#define PULSING_SPEED_DIV       2
+#define PULSING_MIN_VALUE_DIV   3
+
+// Default pulsing configuration
+#define PULSING_CONFIG_DEFAULT (PulsingConfig){.speed_divisor = PULSING_SPEED_DIV, .min_value_divisor = PULSING_MIN_VALUE_DIV}
+
+// Calculate pulsing brightness value using sine wave
+static inline uint8_t rgb_pulsing_value(uint8_t max_value, PulsingConfig config) {
+    uint8_t sin_wave = sin8(timer_read() >> config.speed_divisor);
+    uint8_t min_v = max_value / config.min_value_divisor;
+    return min_v + scale8(sin_wave, max_value - min_v);
+}
+
+// Calculate antiphase pulsing brightness (inverted sine wave)
+static inline uint8_t rgb_pulsing_value_antiphase(uint8_t max_value, PulsingConfig config) {
+    uint8_t sin_wave = 255 - sin8(timer_read() >> config.speed_divisor);
+    uint8_t min_v = max_value / config.min_value_divisor;
+    return min_v + scale8(sin_wave, max_value - min_v);
+}
+
+// Create pulsing RGB color from HSV (with effective saturation)
+static inline RGB rgb_pulsing(HSV hsv, uint8_t max_value, PulsingConfig config) {
+    hsv.v = rgb_pulsing_value(max_value, config);
+    return hsv_to_rgb_effective(hsv);
+}
+
+// Create antiphase pulsing RGB color from HSV (with effective saturation)
+static inline RGB rgb_pulsing_antiphase(HSV hsv, uint8_t max_value, PulsingConfig config) {
+    hsv.v = rgb_pulsing_value_antiphase(max_value, config);
+    return hsv_to_rgb_effective(hsv);
+}
