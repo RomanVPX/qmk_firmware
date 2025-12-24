@@ -1,7 +1,8 @@
 #include QMK_KEYBOARD_H
+#include "grid_map.h"
 
-#define SNAKE_WIDTH 12
-#define SNAKE_HEIGHT 4
+#define SNAKE_WIDTH GRID_WIDTH
+#define SNAKE_HEIGHT GRID_HEIGHT
 #define SNAKE_MAX_LENGTH (SNAKE_WIDTH * SNAKE_HEIGHT)
 #define SNAKE_SPEED_MS 400
 
@@ -12,34 +13,6 @@
 #define SNAKE_COLOR_BG       22, 10, 30
 
 #define INPUT_BUFFER_SIZE 5
-
-// Matrix Cols is 17 for K13 Max
-#define M_COLS 17
-
-// Logical map to Matrix Index (row * 17 + col)
-// 0xFF = invalid/empty
-static const uint8_t PROGMEM snake_map[SNAKE_HEIGHT][SNAKE_WIDTH] = {
-    // Row 0 -> Physical Row 1 (1, 2... =)
-    {
-        1*M_COLS+1, 1*M_COLS+2, 1*M_COLS+3, 1*M_COLS+4, 1*M_COLS+5, 1*M_COLS+6,
-        1*M_COLS+7, 1*M_COLS+8, 1*M_COLS+9, 1*M_COLS+10, 1*M_COLS+11, 1*M_COLS+12
-    },
-    // Row 1 -> Physical Row 2 (Q, W... ])
-    {
-        2*M_COLS+1, 2*M_COLS+2, 2*M_COLS+3, 2*M_COLS+4, 2*M_COLS+5, 2*M_COLS+6,
-        2*M_COLS+7, 2*M_COLS+8, 2*M_COLS+9, 2*M_COLS+10, 2*M_COLS+11, 2*M_COLS+12
-    },
-    // Row 2 -> Physical Row 3 (A, S... ') - Last 2 entries duplicated to match width 12
-    {
-        3*M_COLS+1, 3*M_COLS+2, 3*M_COLS+3, 3*M_COLS+4, 3*M_COLS+5, 3*M_COLS+6,
-        3*M_COLS+7, 3*M_COLS+8, 3*M_COLS+9, 3*M_COLS+10, 3*M_COLS+11, 3*M_COLS+11
-    },
-    // Row 3 -> Physical Row 4 (Z, X... /) - Last 3 entries duplicated to match width 12
-    {
-        4*M_COLS+2, 4*M_COLS+3, 4*M_COLS+4, 4*M_COLS+5, 4*M_COLS+6, 4*M_COLS+7,
-        4*M_COLS+8, 4*M_COLS+9, 4*M_COLS+10, 4*M_COLS+11, 4*M_COLS+11, 4*M_COLS+11
-    }
-};
 
 typedef struct {
     int8_t x;
@@ -81,23 +54,13 @@ static uint8_t snake_pop_input(void) {
     return val;
 }
 
-// Helper to get LED index from matrix index
-static uint8_t get_led_index_from_matrix(uint8_t matrix_idx) {
-    if (matrix_idx == 0xFF) return NO_LED;
-    uint8_t r = matrix_idx / M_COLS;
-    uint8_t c = matrix_idx % M_COLS;
-    // Safety check
-    if (r >= MATRIX_ROWS || c >= MATRIX_COLS) return NO_LED;
-    return g_led_config.matrix_co[r][c];
-}
-
 static void snake_spawn_food(void) {
     while (true) {
         snake_food.x = timer_read() % SNAKE_WIDTH;
         snake_food.y = (timer_read() / 13) % SNAKE_HEIGHT;
 
         // Check if valid position (not 0xFF in map)
-        if (pgm_read_byte(&snake_map[snake_food.y][snake_food.x]) == 0xFF) continue;
+        if (pgm_read_byte(&grid_map[snake_food.y][snake_food.x]) == 0xFF) continue;
 
         // Check collision with snake
         bool collision = false;
@@ -159,7 +122,7 @@ static void snake_update(void) {
     // Wall collision (die)
     if (new_head.x < 0 || new_head.x >= SNAKE_WIDTH ||
         new_head.y < 0 || new_head.y >= SNAKE_HEIGHT ||
-        pgm_read_byte(&snake_map[new_head.y][new_head.x]) == 0xFF) {
+        pgm_read_byte(&grid_map[new_head.y][new_head.x]) == 0xFF) {
         snake_game_over = true;
         return;
     }
@@ -239,7 +202,7 @@ void snake_game_render(void) {
     // Draw Background
     for (uint8_t y = 0; y < SNAKE_HEIGHT; y++) {
         for (uint8_t x = 0; x < SNAKE_WIDTH; x++) {
-            uint8_t m_idx = pgm_read_byte(&snake_map[y][x]);
+            uint8_t m_idx = pgm_read_byte(&grid_map[y][x]);
             if (m_idx != 0xFF) {
                  uint8_t l_idx = get_led_index_from_matrix(m_idx);
                  if (l_idx != NO_LED) rgb_matrix_set_color(l_idx, SNAKE_COLOR_BG);
@@ -250,7 +213,7 @@ void snake_game_render(void) {
     if (snake_game_over) {
         // Full snake body on death
         for (uint8_t i = 0; i < snake_len; i++) {
-             uint8_t m_idx = pgm_read_byte(&snake_map[snake_body[i].y][snake_body[i].x]);
+             uint8_t m_idx = pgm_read_byte(&grid_map[snake_body[i].y][snake_body[i].x]);
              uint8_t l_idx = get_led_index_from_matrix(m_idx);
              if (l_idx != NO_LED) rgb_matrix_set_color(l_idx, SNAKE_COLOR_DEATH);
         }
@@ -258,7 +221,7 @@ void snake_game_render(void) {
     }
 
     // Draw Food
-    uint8_t f_m_idx = pgm_read_byte(&snake_map[snake_food.y][snake_food.x]);
+    uint8_t f_m_idx = pgm_read_byte(&grid_map[snake_food.y][snake_food.x]);
     uint8_t f_l_idx = get_led_index_from_matrix(f_m_idx);
     if (f_l_idx != NO_LED) {
         rgb_matrix_set_color(f_l_idx, SNAKE_COLOR_FOOD);
@@ -266,7 +229,7 @@ void snake_game_render(void) {
 
     // Draw Snake
     for (uint8_t i = 0; i < snake_len; i++) {
-        uint8_t m_idx = pgm_read_byte(&snake_map[snake_body[i].y][snake_body[i].x]);
+        uint8_t m_idx = pgm_read_byte(&grid_map[snake_body[i].y][snake_body[i].x]);
         uint8_t l_idx = get_led_index_from_matrix(m_idx);
         if (l_idx != NO_LED) {
             if (i == 0) {

@@ -1,0 +1,135 @@
+#include QMK_KEYBOARD_H
+#include "grid_map.h"
+
+#define LIFE_WIDTH GRID_WIDTH
+#define LIFE_HEIGHT GRID_HEIGHT
+#define LIFE_SPEED_MS 500
+
+#define LIFE_COLOR_ALIVE    RGB_GOLD
+#define LIFE_COLOR_DEAD     10, 0, 20 // Same BG as Snake
+#define LIFE_COLOR_CURSOR   RGB_WHITE
+
+static bool life_active = false;
+static uint32_t life_timer = 0;
+static bool life_grid[LIFE_HEIGHT][LIFE_WIDTH];
+static bool life_next_grid[LIFE_HEIGHT][LIFE_WIDTH];
+
+bool life_is_active(void) {
+    return life_active;
+}
+
+void life_game_start(void) {
+    life_active = true;
+    life_timer = timer_read();
+
+    // Clear grid
+    memset(life_grid, 0, sizeof(life_grid));
+
+    // Initial pattern
+    life_grid[1][5] = true;
+    life_grid[1][6] = true;
+    life_grid[1][7] = true;
+}
+
+void life_game_stop(void) {
+    life_active = false;
+}
+
+// Check neighbors.
+static uint8_t count_neighbors(int8_t x, int8_t y) {
+    uint8_t count = 0;
+    for (int8_t dy = -1; dy <= 1; dy++) {
+        for (int8_t dx = -1; dx <= 1; dx++) {
+            if (dx == 0 && dy == 0) continue;
+
+            int8_t nx = x + dx;
+            int8_t ny = y + dy;
+
+            if (nx >= 0 && nx < LIFE_WIDTH && ny >= 0 && ny < LIFE_HEIGHT) {
+                if (life_grid[ny][nx]) count++;
+            }
+        }
+    }
+    return count;
+}
+
+static void life_update(void) {
+    for (uint8_t y = 0; y < LIFE_HEIGHT; y++) {
+        for (uint8_t x = 0; x < LIFE_WIDTH; x++) {
+            uint8_t neighbors = count_neighbors(x, y);
+            bool alive = life_grid[y][x];
+
+            if (alive) {
+                // Survival: 2 or 3 neighbors
+                life_next_grid[y][x] = (neighbors == 2 || neighbors == 3);
+            } else {
+                // Birth: 3 neighbors
+                life_next_grid[y][x] = (neighbors == 3);
+            }
+        }
+    }
+
+    memcpy(life_grid, life_next_grid, sizeof(life_grid));
+}
+
+void life_game_task(void) {
+    if (!life_active) return;
+
+    if (timer_elapsed(life_timer) > LIFE_SPEED_MS) {
+        life_update();
+        life_timer = timer_read();
+    }
+}
+
+bool life_game_process_record(uint16_t keycode, keyrecord_t *record) {
+    if (!life_active) return true;
+
+    if (record->event.pressed) {
+        if (keycode == KC_ESC) {
+            life_game_stop();
+            return false;
+        }
+        // Find which key in grid corresponds to keycode
+        uint8_t r = record->event.key.row;
+        uint8_t c = record->event.key.col;
+        uint8_t matrix_idx = r * M_COLS + c;
+
+        for (uint8_t y = 0; y < LIFE_HEIGHT; y++) {
+            for (uint8_t x = 0; x < LIFE_WIDTH; x++) {
+                 if (pgm_read_byte(&grid_map[y][x]) == matrix_idx) {
+                     life_grid[y][x] = !life_grid[y][x];
+                     return false; // Consume key - toggle cell state
+                 }
+            }
+        }
+    } else {
+         return true;
+    }
+
+    return false;
+}
+
+void life_game_render(void) {
+    if (!life_active) return;
+
+    // Clear "screen"
+    for (uint8_t i = 0; i < RGB_MATRIX_LED_COUNT; i++) {
+        rgb_matrix_set_color(i, 0, 0, 0);
+    }
+
+    for (uint8_t y = 0; y < LIFE_HEIGHT; y++) {
+        for (uint8_t x = 0; x < LIFE_WIDTH; x++) {
+            uint8_t m_idx = pgm_read_byte(&grid_map[y][x]);
+            if (m_idx != 0xFF) {
+                 uint8_t l_idx = get_led_index_from_matrix(m_idx);
+                 if (l_idx != NO_LED) {
+                     if (life_grid[y][x]) {
+                         rgb_matrix_set_color(l_idx, LIFE_COLOR_ALIVE);
+                     } else {
+                         rgb_matrix_set_color(l_idx, LIFE_COLOR_DEAD);
+                     }
+                 }
+            }
+        }
+    }
+}
