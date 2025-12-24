@@ -4,15 +4,19 @@
 #define LIFE_HEIGHT GRID_HEIGHT
 #define LIFE_SPEED_MS 500
 
-#define LIFE_COLOR_ALIVE    RGB_GOLD
-#define LIFE_COLOR_DYING    RGB_GOLDENROD
-#define LIFE_COLOR_DEAD     10, 0, 20 // Same BG as Snake
+#define LIFE_COLOR_ALIVE    RGB_SPRINGGREEN
+#define LIFE_COLOR_DYING    15, 20, 120
+#define LIFE_COLOR_DEAD     10, 5, 10
+
+#define STATE_DEAD  0
+#define STATE_ALIVE 1
+#define STATE_DYING 2
 
 static bool life_active = false;
 static uint32_t life_timer = 0;
 static bool life_paused = false;
-static bool life_grid[LIFE_HEIGHT][LIFE_WIDTH];
-static bool life_next_grid[LIFE_HEIGHT][LIFE_WIDTH];
+static uint8_t life_grid[LIFE_HEIGHT][LIFE_WIDTH];
+static uint8_t life_next_grid[LIFE_HEIGHT][LIFE_WIDTH];
 
 bool life_is_active(void) {
     return life_active;
@@ -23,12 +27,12 @@ void life_game_start(void) {
     life_timer = timer_read();
 
     // Clear grid
-    memset(life_grid, 0, sizeof(life_grid));
+    memset(life_grid, STATE_DEAD, sizeof(life_grid));
 
     // Initial pattern
-    life_grid[1][5] = true;
-    life_grid[1][6] = true;
-    life_grid[1][7] = true;
+    life_grid[1][5] = STATE_ALIVE;
+    life_grid[1][6] = STATE_ALIVE;
+    life_grid[1][7] = STATE_ALIVE;
 }
 
 void life_game_stop(void) {
@@ -47,7 +51,7 @@ static uint8_t count_neighbors(int8_t x, int8_t y) {
             int8_t nx = (x + dx + LIFE_WIDTH) % LIFE_WIDTH;
             int8_t ny = (y + dy + LIFE_HEIGHT) % LIFE_HEIGHT;
 
-            if (life_grid[ny][nx]) count++;
+            if (life_grid[ny][nx] == STATE_ALIVE) count++;
         }
     }
     return count;
@@ -57,14 +61,23 @@ static void life_update(void) {
     for (uint8_t y = 0; y < LIFE_HEIGHT; y++) {
         for (uint8_t x = 0; x < LIFE_WIDTH; x++) {
             uint8_t neighbors = count_neighbors(x, y);
-            bool alive = life_grid[y][x];
+            uint8_t state = life_grid[y][x];
+            bool alive = (state == STATE_ALIVE);
 
             if (alive) {
                 // Survival: 2 or 3 neighbors
-                life_next_grid[y][x] = (neighbors == 2 || neighbors == 3);
+                if (neighbors == 2 || neighbors == 3) {
+                    life_next_grid[y][x] = STATE_ALIVE;
+                } else {
+                    life_next_grid[y][x] = STATE_DYING;
+                }
             } else {
                 // Birth: 3 neighbors
-                life_next_grid[y][x] = (neighbors == 3);
+                if (neighbors == 3) {
+                    life_next_grid[y][x] = STATE_ALIVE;
+                } else {
+                    life_next_grid[y][x] = STATE_DEAD;
+                }
             }
         }
     }
@@ -103,7 +116,11 @@ bool life_game_process_record(uint16_t keycode, keyrecord_t *record) {
         for (uint8_t y = 0; y < LIFE_HEIGHT; y++) {
             for (uint8_t x = 0; x < LIFE_WIDTH; x++) {
                  if (pgm_read_byte(&grid_map_clamp[y][x]) == matrix_idx) {
-                     life_grid[y][x] = !life_grid[y][x];
+                     if (life_grid[y][x] == STATE_ALIVE) {
+                         life_grid[y][x] = STATE_DEAD;
+                     } else {
+                         life_grid[y][x] = STATE_ALIVE;
+                     }
                      return false; // Consume key - toggle cell state
                  }
             }
@@ -129,8 +146,10 @@ void life_game_render(void) {
             if (m_idx != 0xFF) {
                  uint8_t l_idx = get_led_index_from_matrix(m_idx);
                  if (l_idx != NO_LED) {
-                     if (life_grid[y][x]) {
+                     if (life_grid[y][x] == STATE_ALIVE) {
                          rgb_matrix_set_color(l_idx, LIFE_COLOR_ALIVE);
+                     } else if (life_grid[y][x] == STATE_DYING) {
+                         rgb_matrix_set_color(l_idx, LIFE_COLOR_DYING);
                      } else {
                          rgb_matrix_set_color(l_idx, LIFE_COLOR_DEAD);
                      }
