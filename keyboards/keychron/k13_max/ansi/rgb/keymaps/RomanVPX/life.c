@@ -1,16 +1,17 @@
 #include "grid_map.h"
+#include <lib/lib8tion/lib8tion.h>
 
 #define LIFE_WIDTH GRID_WIDTH
 #define LIFE_HEIGHT GRID_HEIGHT
-#define LIFE_SPEED_MS 500
+#define LIFE_SPEED_MS 300
+#define LIFE_FADE_SUB 60
 
 #define LIFE_COLOR_ALIVE    RGB_SPRINGGREEN
-#define LIFE_COLOR_DYING    15, 20, 120
-#define LIFE_COLOR_DEAD     10, 5, 10
+#define LIFE_COLOR_DYING    RGB_BLUE
+#define LIFE_COLOR_BG       10, 5, 8
 
 #define STATE_DEAD  0
-#define STATE_ALIVE 1
-#define STATE_DYING 2
+#define STATE_ALIVE 255
 
 static bool life_active = false;
 static uint32_t life_timer = 0;
@@ -22,6 +23,17 @@ bool life_is_active(void) {
     return life_active;
 }
 
+static inline void init_random_pattern(void) {
+    // Initialize with a random pattern
+    for (uint8_t y = 0; y < LIFE_HEIGHT; y++) {
+        for (uint8_t x = 0; x < LIFE_WIDTH; x++) {
+            if (rand() % 3 == 0) { // 1/3 chance to be alive
+                life_grid[y][x] = STATE_ALIVE;
+            }
+        }
+    }
+}
+
 void life_game_start(void) {
     life_active = true;
     life_timer = timer_read();
@@ -29,10 +41,8 @@ void life_game_start(void) {
     // Clear grid
     memset(life_grid, STATE_DEAD, sizeof(life_grid));
 
-    // Initial pattern
-    life_grid[1][5] = STATE_ALIVE;
-    life_grid[1][6] = STATE_ALIVE;
-    life_grid[1][7] = STATE_ALIVE;
+    // Initialize with a random pattern
+    init_random_pattern();
 }
 
 void life_game_stop(void) {
@@ -61,23 +71,20 @@ static void life_update(void) {
     for (uint8_t y = 0; y < LIFE_HEIGHT; y++) {
         for (uint8_t x = 0; x < LIFE_WIDTH; x++) {
             uint8_t neighbors = count_neighbors(x, y);
-            uint8_t state = life_grid[y][x];
-            bool alive = (state == STATE_ALIVE);
+            uint8_t current_val = life_grid[y][x];
+            bool is_alive_now = (current_val == STATE_ALIVE);
+            bool will_be_alive = false;
 
-            if (alive) {
-                // Survival: 2 or 3 neighbors
-                if (neighbors == 2 || neighbors == 3) {
-                    life_next_grid[y][x] = STATE_ALIVE;
-                } else {
-                    life_next_grid[y][x] = STATE_DYING;
-                }
+            if (is_alive_now) {
+                will_be_alive = (neighbors == 2 || neighbors == 3);
             } else {
-                // Birth: 3 neighbors
-                if (neighbors == 3) {
-                    life_next_grid[y][x] = STATE_ALIVE;
-                } else {
-                    life_next_grid[y][x] = STATE_DEAD;
-                }
+                will_be_alive = (neighbors == 3);
+            }
+
+            if (will_be_alive) {
+                life_next_grid[y][x] = STATE_ALIVE;
+            } else {
+                life_next_grid[y][x] = qsub8(current_val, LIFE_FADE_SUB);
             }
         }
     }
@@ -108,6 +115,11 @@ bool life_game_process_record(uint16_t keycode, keyrecord_t *record) {
             return false;
         }
 
+        if (keycode == KC_BSPC) {
+            memset(life_grid, STATE_DEAD, sizeof(life_grid));
+            return false;
+        }
+
         // Find which key in grid corresponds to keycode
         uint8_t r = record->event.key.row;
         uint8_t c = record->event.key.col;
@@ -132,6 +144,15 @@ bool life_game_process_record(uint16_t keycode, keyrecord_t *record) {
     return false;
 }
 
+
+static inline RGB life_rgb_lerp(RGB a, RGB b, uint8_t frac) {
+    RGB res;
+    res.r = lerp8by8(a.r, b.r, frac);
+    res.g = lerp8by8(a.g, b.g, frac);
+    res.b = lerp8by8(a.b, b.b, frac);
+    return res;
+}
+
 void life_game_render(void) {
     if (!life_active) return;
 
@@ -144,16 +165,18 @@ void life_game_render(void) {
         for (uint8_t x = 0; x < LIFE_WIDTH; x++) {
             uint8_t m_idx = pgm_read_byte(&GRID_MAP[y][x]);
             if (m_idx != 0xFF) {
-                 uint8_t l_idx = get_led_index_from_matrix(m_idx);
-                 if (l_idx != NO_LED) {
-                     if (life_grid[y][x] == STATE_ALIVE) {
-                         rgb_matrix_set_color(l_idx, LIFE_COLOR_ALIVE);
-                     } else if (life_grid[y][x] == STATE_DYING) {
-                         rgb_matrix_set_color(l_idx, LIFE_COLOR_DYING);
-                     } else {
-                         rgb_matrix_set_color(l_idx, LIFE_COLOR_DEAD);
-                     }
-                 }
+                uint8_t l_idx = get_led_index_from_matrix(m_idx);
+                if (l_idx != NO_LED) {
+                    uint8_t val = life_grid[y][x];
+                    if (val == STATE_ALIVE) {
+                        rgb_matrix_set_color(l_idx, LIFE_COLOR_ALIVE);
+                    } else if (val > STATE_DEAD) {
+                        RGB dying_color = life_rgb_lerp((RGB){LIFE_COLOR_BG}, (RGB){LIFE_COLOR_DYING}, val);
+                        rgb_matrix_set_color(l_idx, dying_color.r, dying_color.g, dying_color.b);
+                    } else {
+                        rgb_matrix_set_color(l_idx, LIFE_COLOR_BG);
+                    }
+                }
             }
         }
     }
