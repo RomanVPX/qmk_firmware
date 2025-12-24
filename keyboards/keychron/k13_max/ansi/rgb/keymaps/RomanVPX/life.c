@@ -5,11 +5,12 @@
 #define LIFE_SPEED_MS 500
 
 #define LIFE_COLOR_ALIVE    RGB_GOLD
+#define LIFE_COLOR_DYING    RGB_GOLDENROD
 #define LIFE_COLOR_DEAD     10, 0, 20 // Same BG as Snake
-#define LIFE_COLOR_CURSOR   RGB_WHITE
 
 static bool life_active = false;
 static uint32_t life_timer = 0;
+static bool life_paused = false;
 static bool life_grid[LIFE_HEIGHT][LIFE_WIDTH];
 static bool life_next_grid[LIFE_HEIGHT][LIFE_WIDTH];
 
@@ -31,6 +32,7 @@ void life_game_start(void) {
 }
 
 void life_game_stop(void) {
+    life_paused = false;
     life_active = false;
 }
 
@@ -73,7 +75,7 @@ static void life_update(void) {
 void life_game_task(void) {
     if (!life_active) return;
 
-    if (timer_elapsed(life_timer) > LIFE_SPEED_MS) {
+    if (!life_paused && timer_elapsed(life_timer) > LIFE_SPEED_MS) {
         life_update();
         life_timer = timer_read();
     }
@@ -87,6 +89,12 @@ bool life_game_process_record(uint16_t keycode, keyrecord_t *record) {
             life_game_stop();
             return false;
         }
+
+        if (keycode == KC_SPC) {
+            life_paused = !life_paused;
+            return false;
+        }
+
         // Find which key in grid corresponds to keycode
         uint8_t r = record->event.key.row;
         uint8_t c = record->event.key.col;
