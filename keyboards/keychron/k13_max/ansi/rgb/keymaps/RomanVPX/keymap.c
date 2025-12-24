@@ -114,6 +114,8 @@ static uint16_t char_to_keycode(char c) {
         case ',':  return KC_COMM;
         case '.':  return KC_DOT;
         case '/':  return KC_SLSH;
+        case '(':  return KC_9;
+        case ')':  return KC_0;
     }
     return KC_NO;
 }
