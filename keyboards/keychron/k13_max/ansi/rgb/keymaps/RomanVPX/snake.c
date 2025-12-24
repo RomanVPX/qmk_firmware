@@ -198,11 +198,8 @@ void snake_game_render(void) {
     rgb_clear_all();
 
     // Draw Background
-    for (uint8_t y = 0; y < SNAKE_HEIGHT; y++) {
-        for (uint8_t x = 0; x < SNAKE_WIDTH; x++) {
-            uint8_t l_idx = grid_get_led(y, x);
-            if (l_idx != NO_LED) rgb_matrix_set_color(l_idx, SNAKE_COLOR_BG);
-        }
+    FOR_EACH_GRID_LED() {
+        rgb_matrix_set_color(grid_led_index, SNAKE_COLOR_BG);
     }
 
     if (snake_game_over) {

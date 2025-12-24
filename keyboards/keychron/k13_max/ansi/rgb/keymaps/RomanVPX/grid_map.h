@@ -79,4 +79,20 @@ static inline uint8_t grid_get_led(uint8_t y, uint8_t x) {
     uint8_t m_idx = pgm_read_byte(&GRID_MAP[y][x]);
     return (m_idx != 0xFF) ? get_led_index_from_matrix(m_idx) : NO_LED;
 }
+
+// Iterate over all grid positions
+// Variables available in body: gx, gy
+#define FOR_EACH_GRID_POS() \
+    for (uint8_t gy = 0; gy < GRID_HEIGHT; ++gy) \
+        for (uint8_t gx = 0; gx < GRID_WIDTH; ++gx)
+
+// Iterate over all grid positions with valid LED
+// Variables available in body: gx, gy, grid_led_index
+#define FOR_EACH_GRID_LED() \
+    for (uint8_t gy = 0; gy < GRID_HEIGHT; ++gy) \
+        for (uint8_t gx = 0; gx < GRID_WIDTH; ++gx) \
+            for (uint8_t grid_led_index = grid_get_led(gy, gx), _gonce = 1; \
+                 _gonce && grid_led_index != NO_LED; \
+                 _gonce = 0)
+
 #endif // GRID_MAP_INCLUDED

@@ -18,6 +18,7 @@
 #include "keychron_common.h"
 #include <string.h>
 #include "rgb_utils.h"
+#include "matrix_utils.h"
 #include "snake.h"
 #include "life.h"
 
@@ -114,14 +115,12 @@ static uint16_t char_to_keycode(char c) {
 }
 
 // Find matrix position for a keycode by searching the keymap
-static bool find_keycode_position(uint16_t target, uint8_t layer, uint8_t* row, uint8_t* col) {
-    for (uint8_t r = 0; r < MATRIX_ROWS; ++r) {
-        for (uint8_t c = 0; c < MATRIX_COLS; ++c) {
-            if (keymap_key_to_keycode(layer, (keypos_t){c, r}) == target) {
-                *row = r;
-                *col = c;
-                return true;
-            }
+static bool find_keycode_position(uint16_t target, uint8_t layer, uint8_t* out_row, uint8_t* out_col) {
+    FOR_EACH_MATRIX_POS() {
+        if (KEYCODE_AT(layer, row, col) == target) {
+            *out_row = row;
+            *out_col = col;
+            return true;
         }
     }
     return false;
@@ -405,44 +404,37 @@ static bool rgb_render_strings_layer(uint8_t led_min, uint8_t led_max, uint8_t c
     RGB blend_off = rgb_lerp(rgb_anim, (RGB){0,0,0}, transition_progress);
 
     // Render lighting
-    for (uint8_t row = 0; row < MATRIX_ROWS; ++row) {
-        for (uint8_t col = 0; col < MATRIX_COLS; ++col) {
-            uint8_t index = g_led_config.matrix_co[row][col];
-            if (index == NO_LED || index < led_min || index >= led_max) continue;
+    FOR_EACH_LED_IN_RANGE(led_min, led_max) {
+        uint16_t keycode = KEYCODE_AT(STRINGS_LAYER, row, col);
+        bool is_active_key = IS_STRING_MACRO(keycode);
 
-            uint16_t keycode = keymap_key_to_keycode(STRINGS_LAYER, (keypos_t){col, row});
-            bool is_active_key = IS_STRING_MACRO(keycode);
-
-            // Current animation key - full brightness green
-            if (anim_key_found && row == anim_row && col == anim_col) {
-                rgb_matrix_set_color(index, rgb_anim.r, rgb_anim.g, rgb_anim.b);
-            }
-
-            // Previous key - transition from anim color to target color
-            else if (prev_anim_valid && row == prev_anim_row && col == prev_anim_col) {
-                if (is_active_key) {
-                    rgb_matrix_set_color(index, blend_active.r, blend_active.g, blend_active.b);
-                } else if (is_key_in_animation_string(row, col)) {
-                    rgb_matrix_set_color(index, blend_preview.r, blend_preview.g, blend_preview.b);
-                } else {
-                    rgb_matrix_set_color(index, blend_off.r, blend_off.g, blend_off.b);
-                }
-            }
-
-            // Keys in animation string - preview
-            else if (animation_active && is_key_in_animation_string(row, col)) {
-                rgb_matrix_set_color(index, rgb_anim_preview.r, rgb_anim_preview.g, rgb_anim_preview.b);
-            }
-            // Active keys with Fn held - pulsing
-            else if (fn_held_in_strings_layer && is_active_key) {
-                rgb_matrix_set_color(index, rgb_strings_pulsing.r, rgb_strings_pulsing.g, rgb_strings_pulsing.b);
-            }
-            // Normal active keys
-            else if (is_active_key) {
-                rgb_matrix_set_color(index, rgb_strings.r, rgb_strings.g, rgb_strings.b);
-            }
-            // Other keys - no highlight
+        // Current animation key - full brightness green
+        if (anim_key_found && row == anim_row && col == anim_col) {
+            rgb_matrix_set_color(led_index, rgb_anim.r, rgb_anim.g, rgb_anim.b);
         }
+        // Previous key - transition from anim color to target color
+        else if (prev_anim_valid && row == prev_anim_row && col == prev_anim_col) {
+            if (is_active_key) {
+                rgb_matrix_set_color(led_index, blend_active.r, blend_active.g, blend_active.b);
+            } else if (is_key_in_animation_string(row, col)) {
+                rgb_matrix_set_color(led_index, blend_preview.r, blend_preview.g, blend_preview.b);
+            } else {
+                rgb_matrix_set_color(led_index, blend_off.r, blend_off.g, blend_off.b);
+            }
+        }
+        // Keys in animation string - preview
+        else if (animation_active && is_key_in_animation_string(row, col)) {
+            rgb_matrix_set_color(led_index, rgb_anim_preview.r, rgb_anim_preview.g, rgb_anim_preview.b);
+        }
+        // Active keys with Fn held - pulsing
+        else if (fn_held_in_strings_layer && is_active_key) {
+            rgb_matrix_set_color(led_index, rgb_strings_pulsing.r, rgb_strings_pulsing.g, rgb_strings_pulsing.b);
+        }
+        // Normal active keys
+        else if (is_active_key) {
+            rgb_matrix_set_color(led_index, rgb_strings.r, rgb_strings.g, rgb_strings.b);
+        }
+        // Other keys - no highlight
     }
     return false;
 }
@@ -493,15 +485,11 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
         .antiphase = rgb_antiphase_pulsing_alt,
     };
 
-    for (uint8_t row = 0; row < MATRIX_ROWS; ++row) {
-        for (uint8_t col = 0; col < MATRIX_COLS; ++col) {
-            uint8_t index = g_led_config.matrix_co[row][col];
-            if (index == NO_LED || index < led_min || index >= led_max) { continue; }
-            if (base_layer == MAC_BASE) {
-                handle_mac_lighting(row, col, index, &palette, is_mac_fn, is_mac_f_layer);
-            } else {
-                handle_win_lighting(row, col, index, &rgb_static_main);
-            }
+    FOR_EACH_LED_IN_RANGE(led_min, led_max) {
+        if (base_layer == MAC_BASE) {
+            handle_mac_lighting(row, col, led_index, &palette, is_mac_fn, is_mac_f_layer);
+        } else {
+            handle_win_lighting(row, col, led_index, &rgb_static_main);
         }
     }
     return false;
