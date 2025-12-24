@@ -115,7 +115,7 @@ bool life_game_process_record(uint16_t keycode, keyrecord_t *record) {
 
         for (uint8_t y = 0; y < LIFE_HEIGHT; y++) {
             for (uint8_t x = 0; x < LIFE_WIDTH; x++) {
-                 if (pgm_read_byte(&grid_map_clamp[y][x]) == matrix_idx) {
+                 if (pgm_read_byte(&GRID_MAP[y][x]) == matrix_idx) {
                      if (life_grid[y][x] == STATE_ALIVE) {
                          life_grid[y][x] = STATE_DEAD;
                      } else {
@@ -142,7 +142,7 @@ void life_game_render(void) {
 
     for (uint8_t y = 0; y < LIFE_HEIGHT; y++) {
         for (uint8_t x = 0; x < LIFE_WIDTH; x++) {
-            uint8_t m_idx = pgm_read_byte(&grid_map_clamp[y][x]);
+            uint8_t m_idx = pgm_read_byte(&GRID_MAP[y][x]);
             if (m_idx != 0xFF) {
                  uint8_t l_idx = get_led_index_from_matrix(m_idx);
                  if (l_idx != NO_LED) {
