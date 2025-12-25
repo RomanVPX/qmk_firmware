@@ -1,6 +1,5 @@
 #define GRID_SNAKE
 #include "grid_map.h"
-#include "rgb_utils.h"
 
 #define SNAKE_WIDTH GRID_WIDTH
 #define SNAKE_HEIGHT GRID_HEIGHT

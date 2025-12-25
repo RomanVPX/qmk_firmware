@@ -89,27 +89,10 @@ static const char* get_string_for_keycode(uint16_t keycode) {
     return NULL;
 }
 
-// Convert ASCII character to QMK keycode
 static uint16_t char_to_keycode(char c) {
-    if (c >= 'a' && c <= 'z') return KC_A + (c - 'a');
-    if (c >= 'A' && c <= 'Z') return KC_A + (c - 'A');
-    if (c >= '1' && c <= '9') return KC_1 + (c - '1');
-    if (c == '0') return KC_0;
-    switch (c) {
-        case ' ':  return KC_SPC;
-        case '-':  return KC_MINS;
-        case '=':  return KC_EQL;
-        case '[':  return KC_LBRC;
-        case ']':  return KC_RBRC;
-        case '\\': return KC_BSLS;
-        case ';': case ':': return KC_SCLN;
-        case '\'': case '"': return KC_QUOT;
-        case '`':  return KC_GRV;
-        case ',':  return KC_COMM;
-        case '.':  return KC_DOT;
-        case '/':  return KC_SLSH;
-        case '(':  return KC_9;
-        case ')':  return KC_0;
+    if (c >= 0 && c < 128) {
+        uint8_t keycode = pgm_read_byte(&ascii_to_keycode_lut[(uint8_t)c]);
+        return keycode != XXXXXXX ? keycode : KC_NO;
     }
     return KC_NO;
 }
