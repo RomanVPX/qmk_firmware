@@ -142,7 +142,7 @@ bool life_game_process_record(uint16_t keycode, keyrecord_t *record) {
 void life_game_render(void) {
     if (!life_active) return;
 
-    rgb_clear_all();
+    rgb_matrix_set_color_all(RGB_OFF);
 
     RGB bg_color = rgb_make(LIFE_COLOR_BG);
     RGB target_color = rgb_make(LIFE_COLOR_DYING);

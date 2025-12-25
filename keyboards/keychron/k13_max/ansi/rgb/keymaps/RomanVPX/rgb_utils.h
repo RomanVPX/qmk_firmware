@@ -17,13 +17,6 @@ static inline RGB rgb_lerp(RGB a, RGB b, uint8_t frac) {
     };
 }
 
-// Clear all LEDs to black
-static inline void rgb_clear_all(void) {
-    for (uint8_t i = 0; i < RGB_MATRIX_LED_COUNT; i++) {
-        rgb_matrix_set_color(i, 0, 0, 0);
-    }
-}
-
 // Get effective saturation scaled by global RGB matrix saturation
 static inline uint8_t rgb_get_effective_sat(uint8_t sat) {
     return scale8(sat, rgb_matrix_get_sat());

@@ -195,7 +195,7 @@ bool snake_game_process_record(uint16_t keycode, keyrecord_t *record) {
 void snake_game_render(void) {
     if (!snake_active) return;
 
-    rgb_clear_all();
+    rgb_matrix_set_color_all(RGB_OFF);
 
     // Draw Background
     FOR_EACH_GRID_LED() {

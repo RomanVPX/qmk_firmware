@@ -228,7 +228,7 @@ bool dino_game_process_record(uint16_t keycode, keyrecord_t *record) {
 void dino_game_render(void) {
     if (!dino_active) return;
 
-    rgb_clear_all();
+    rgb_matrix_set_color_all(RGB_OFF);
 
     RGB bg = rgb_make(DINO_COLOR_BG);
     RGB ground_dim = rgb_make(DINO_COLOR_GROUND_DIM);
