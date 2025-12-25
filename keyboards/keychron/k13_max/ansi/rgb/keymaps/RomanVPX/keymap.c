@@ -38,7 +38,8 @@ enum custom_keycodes {
     TOGGLE_F_LAYER,
     FN_TAP,
     RUN_SNAKE,
-    RUN_LIFE
+    RUN_LIFE,
+    RUN_DINO
 };
 
 // Double-tap detection for FN_TAP
@@ -215,7 +216,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 
     [MAC_FN] = LAYOUT_ansi_90(
         _______,            _______,  _______,  _______,  _______,  _______,  _______,  _______,    _______,     _______,  _______,  _______,   _______, XXXXXXX,  XXXXXXX,  XXXXXXX,
-        _______,  BT_HST1,  BT_HST2,  BT_HST3,  P2P4G,    _______,  _______,  _______,  _______,    _______,     _______,  _______,  _______,   _______, RUN_SNAKE,RUN_LIFE, _______,
+        _______,  BT_HST1,  BT_HST2,  BT_HST3,  P2P4G,    _______,  _______,  _______,  _______,    _______,     _______,  _______,  _______,   _______, RUN_SNAKE,RUN_LIFE, RUN_DINO,
         RGB_TOG,  RGB_MOD,  _______,  RGB_HUI,  RGB_SAI,  RGB_SPI,  _______,  _______,  _______,    _______,     _______,  _______,  _______,   _______, _______,  _______,  _______,
         QK_BOOT,  RGB_RMOD, _______,  RGB_HUD,  RGB_SAD,  RGB_SPD,  _______,  _______,  _______, TOGGLE_F_LAYER, _______,  _______,             _______,  HYP_P1,  _______,  HYP_P3,
         _______,            _______,  _______,  _______,  _______,  BAT_LVL,  NK_TOGG,  _______,    _______,     _______,  _______,             _______,           _______,
@@ -620,6 +621,12 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         case RUN_LIFE:
             if (record->event.pressed) {
                 life_game_start();
+            }
+            return false;
+
+        case RUN_DINO:
+            if (record->event.pressed) {
+                dino_game_start();
             }
             return false;
 

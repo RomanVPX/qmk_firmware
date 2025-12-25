@@ -13,6 +13,7 @@ typedef struct {
 // Forward declarations
 #include "snake.h"
 #include "life.h"
+#include "dino.h"
 
 // Registry of all available games
 static const GameInterface games[] = {
@@ -27,6 +28,12 @@ static const GameInterface games[] = {
         .task = life_game_task,
         .process_record = life_game_process_record,
         .render = life_game_render,
+    },
+    {
+        .is_active = dino_is_active,
+        .task = dino_game_task,
+        .process_record = dino_game_process_record,
+        .render = dino_game_render,
     },
 };
 
