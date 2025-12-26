@@ -1,5 +1,6 @@
 #define GRID_SNAKE
 #include "grid_map.h"
+#include "game_utils.h"
 
 #define SNAKE_WIDTH GRID_WIDTH
 #define SNAKE_HEIGHT GRID_HEIGHT
@@ -56,8 +57,8 @@ static uint8_t snake_pop_input(void) {
 
 static void snake_spawn_food(void) {
     while (true) {
-        snake_food.x = timer_read() % SNAKE_WIDTH;
-        snake_food.y = (timer_read() / 13) % SNAKE_HEIGHT;
+        snake_food.x = game_random(SNAKE_WIDTH);
+        snake_food.y = game_random(SNAKE_HEIGHT);
 
         // Check if valid position (not 0xFF in map)
         if (pgm_read_byte(&GRID_MAP[snake_food.y][snake_food.x]) == 0xFF) continue;

@@ -25,7 +25,7 @@
 // 0xFF = invalid/empty
 static const uint8_t PROGMEM GRID_MAP[GRID_HEIGHT][GRID_WIDTH] = {
 #if F_ROW
-    // Physical Row 0 (Function keys - F1-F12)
+    // Physical Row 0 (Function keys - F1-F10)
     {
         0xFF, 0*M_COLS+1, 0*M_COLS+2, 0*M_COLS+3, 0*M_COLS+4, 0*M_COLS+5,
         0*M_COLS+6, 0*M_COLS+7, 0*M_COLS+8, 0xFF, 0*M_COLS+9, 0*M_COLS+10
@@ -51,7 +51,7 @@ static const uint8_t PROGMEM GRID_MAP[GRID_HEIGHT][GRID_WIDTH] = {
         0xFF
 #endif
     },
-    // Physical Row 4 (Z, X... /) - Last 3 entries duplicated to match width 12
+    // Physical Row 4 (Z, X... /)
     {
         4*M_COLS+2, 4*M_COLS+3, 4*M_COLS+4, 4*M_COLS+5, 4*M_COLS+6, 4*M_COLS+7,
         4*M_COLS+8, 4*M_COLS+9, 4*M_COLS+10, 4*M_COLS+11,

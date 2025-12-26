@@ -1,5 +1,6 @@
 #include "grid_map.h"
 #include "rgb_utils.h"
+#include "game_utils.h"
 
 #define DINO_WIDTH GRID_WIDTH
 #define DINO_HEIGHT GRID_HEIGHT
@@ -58,18 +59,6 @@ static uint8_t ground_offset = 0;
 #define JUMP_BUFFER_SIZE 3
 static uint8_t jump_buffer = 0;
 
-// Simple LFSR for better randomness
-static uint16_t rng_state = 0xACE1;
-
-static uint8_t dino_random(uint8_t max) {
-    // 16-bit LFSR with taps at 16, 14, 13, 11
-    uint16_t bit = ((rng_state >> 0) ^ (rng_state >> 2) ^ (rng_state >> 3) ^ (rng_state >> 5)) & 1;
-    rng_state = (rng_state >> 1) | (bit << 15);
-    // Mix in timer for extra entropy
-    rng_state ^= (uint16_t)timer_read();
-    return rng_state % max;
-}
-
 bool dino_is_active(void) {
     return dino_active;
 }
@@ -79,7 +68,7 @@ static void spawn_obstacle(void) {
         if (!obstacles[i].active) {
             obstacles[i].x = DINO_WIDTH - 1;
             obstacles[i].active = true;
-            next_spawn = OBSTACLE_SPAWN_MIN + dino_random(OBSTACLE_SPAWN_MAX - OBSTACLE_SPAWN_MIN);
+            next_spawn = OBSTACLE_SPAWN_MIN + game_random(OBSTACLE_SPAWN_MAX - OBSTACLE_SPAWN_MIN);
             spawn_counter = 0;
             return;
         }

@@ -227,7 +227,7 @@ bool strings_layer_rgb_render(uint8_t led_min, uint8_t led_max, uint8_t current_
     HSV hsv_strings = STRINGS_LAYER_COLOR_HSV;
     hsv_strings.v = current_val;
     RGB rgb_strings = hsv_to_rgb_effective(hsv_strings);
-    RGB rgb_strings_pulsing = rgb_pulsing(hsv_strings, current_val, pulsing_cfg);
+    RGB rgb_strings_pulsing = rgb_pulsing(hsv_strings, current_val, pulsing_cfg, 0);
 
     HSV hsv_anim = STRINGS_ANIMATION_COLOR_HSV;
     hsv_anim.v = current_val;

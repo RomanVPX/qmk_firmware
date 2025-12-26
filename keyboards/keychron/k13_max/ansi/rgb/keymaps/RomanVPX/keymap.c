@@ -188,6 +188,27 @@ static inline void handle_win_lighting(uint8_t row, uint8_t col, uint8_t index, 
 #define MAIN_COLOR_HSV                  (HSV){HSV_MAGENTA}
 #define SECONDARY_COLOR_HSV             (HSV){HSV_CYAN}
 
+static inline Palette get_current_palette(uint8_t current_val) {
+    PulsingConfig pulsing_cfg = PULSING_CONFIG_DEFAULT;
+
+    HSV hsv_static_main = MAIN_COLOR_HSV;
+    hsv_static_main.v = current_val;
+    RGB rgb_static_main = hsv_to_rgb_effective(hsv_static_main);
+
+    HSV hsv_static_alt = SECONDARY_COLOR_HSV;
+    hsv_static_alt.v = current_val;
+    RGB rgb_static_alt = hsv_to_rgb_effective(hsv_static_alt);
+    RGB rgb_pulsing_alt = rgb_pulsing(hsv_static_alt, current_val, pulsing_cfg, 0);
+    RGB rgb_antiphase_pulsing_alt = rgb_pulsing(hsv_static_alt, current_val, pulsing_cfg, 128);
+
+    return (Palette){
+        .main = rgb_static_main,
+        .alt = rgb_static_alt,
+        .pulsing = rgb_pulsing_alt,
+        .antiphase = rgb_antiphase_pulsing_alt,
+    };
+}
+
 bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
     if (games_render()) {
         return false;
@@ -206,34 +227,18 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
     } else { // Если Fn НЕ зажата, используем стандартный метод:
         base_layer = IS_LAYER_ON(WIN_BASE) ? WIN_BASE : MAC_BASE;
     }
+
     // --- Анимация и цвета ---
-    PulsingConfig pulsing_cfg = PULSING_CONFIG_DEFAULT;
-
-    HSV hsv_static_main = MAIN_COLOR_HSV;
-    hsv_static_main.v = current_val;
-    RGB rgb_static_main = hsv_to_rgb_effective(hsv_static_main);
-
-    HSV hsv_static_alt = SECONDARY_COLOR_HSV;
-    hsv_static_alt.v = current_val;
-    RGB rgb_static_alt = hsv_to_rgb_effective(hsv_static_alt);
-    RGB rgb_pulsing_alt = rgb_pulsing(hsv_static_alt, current_val, pulsing_cfg);
-    RGB rgb_antiphase_pulsing_alt = rgb_pulsing_antiphase(hsv_static_alt, current_val, pulsing_cfg);
+    Palette palette = get_current_palette(current_val);
 
     bool is_mac_fn = layer_state_is(MAC_FN);
     bool is_mac_f_layer = layer_state_is(MAC_F_LAYER);
-
-    Palette palette = {
-        .main = rgb_static_main,
-        .alt = rgb_static_alt,
-        .pulsing = rgb_pulsing_alt,
-        .antiphase = rgb_antiphase_pulsing_alt,
-    };
 
     FOR_EACH_LED_IN_RANGE(led_min, led_max) {
         if (base_layer == MAC_BASE) {
             handle_mac_lighting(row, col, led_index, &palette, is_mac_fn, is_mac_f_layer);
         } else {
-            handle_win_lighting(row, col, led_index, &rgb_static_main);
+            handle_win_lighting(row, col, led_index, &palette.main);
         }
     }
     return false;
@@ -254,6 +259,10 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         return false;
     }
 
+    if (games_handle_trigger(keycode, record)) {
+        return false;
+    }
+
     switch (keycode) {
         case TOGGLE_F_LAYER:
             if (record->event.pressed) {
@@ -263,24 +272,6 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                     layer_on(MAC_F_LAYER);
                 }
             } return false;
-
-        case RUN_SNAKE:
-            if (record->event.pressed) {
-                snake_game_start();
-            }
-            return false;
-
-        case RUN_LIFE:
-            if (record->event.pressed) {
-                life_game_start();
-            }
-            return false;
-
-        case RUN_DINO:
-            if (record->event.pressed) {
-                dino_game_start();
-            }
-            return false;
     }
 
     return true;

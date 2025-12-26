@@ -1,8 +1,7 @@
 #pragma once
 
-#include QMK_KEYBOARD_H
+#include QMK_KEYBOARD_H  // IWYU pragma: keep
 
-// Custom keycodes, including string macros and game controls
 enum custom_keycodes {
     STRNG_FIRST = SAFE_RANGE - 1,
     #define STRNG_X(name, str) name,

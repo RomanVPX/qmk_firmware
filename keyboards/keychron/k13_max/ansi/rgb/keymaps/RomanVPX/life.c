@@ -1,5 +1,6 @@
 #include "grid_map.h"
 #include "rgb_utils.h"
+#include "game_utils.h"
 
 #define LIFE_WIDTH GRID_WIDTH
 #define LIFE_HEIGHT GRID_HEIGHT
@@ -27,7 +28,7 @@ bool life_is_active(void) {
 static inline void init_random_pattern(void) {
     // Initialize with a random pattern
     FOR_EACH_GRID_POS() {
-        if (rand() % 3 == 0) { // 1/3 chance to be alive
+        if (game_random(3) == 0) { // 1/3 chance to be alive
             life_state_grid[gy][gx] = true;
             life_display_grid[gy][gx] = DISPLAY_ALIVE;
         } else {
