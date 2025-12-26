@@ -16,10 +16,11 @@
 
 #include QMK_KEYBOARD_H
 #include "keychron_common.h"
-#include <string.h>
 #include "rgb_utils.h"
 #include "matrix_utils.h"
 #include "game_interface.h"
+#include "custom_keycodes.h"
+#include "strings_layer.h"
 
 enum layers {
     MAC_BASE,
@@ -30,134 +31,12 @@ enum layers {
     STRINGS_LAYER,  // Слой с клавишами STRINGnn
 };
 
-enum custom_keycodes {
-    STRNG_FIRST = SAFE_RANGE - 1,
-    #define STRNG_X(name, str) name,
-    #include "strng_x.inc"
-    STRNG_LAST,
-    TOGGLE_F_LAYER,
-    FN_TAP,
-    RUN_SNAKE,
-    RUN_LIFE,
-    RUN_DINO
-};
-
-// Double-tap detection for FN_TAP
-#define FN_TAP_TIMEOUT 200
-static uint16_t fn_tap_timer = 0;
-static bool fn_tap_pending = false;
-static bool strings_layer_active = false;
-static bool fn_held_in_strings_layer = false;
-static bool fn_used_for_combo = false;
-static uint16_t fn_strings_timer = 0;
-
-// String animation state
-#define ANIMATION_CHAR_DURATION 600
-#define ANIMATION_CHAR_FADEOUT 500
-static bool animation_active = false;
-static const char* animation_string = NULL;
-static uint8_t animation_index = 0;
-static uint8_t animation_length = 0;
-static uint16_t animation_timer = 0;
-static uint8_t prev_anim_row = 0, prev_anim_col = 0;
-static bool prev_anim_valid = false;
-static uint16_t prev_anim_timer = 0;
-
-
 typedef struct {
     RGB main;
     RGB alt;
     RGB pulsing;
     RGB antiphase;
 } Palette;
-
-// Animation cache to improve RGB matrix performance
-typedef struct {
-    uint8_t row;
-    uint8_t col;
-    bool valid;
-} KeyPosCache;
-static KeyPosCache anim_cache[32]; // Max reasonable string length
-static uint32_t anim_key_mask[MATRIX_ROWS]; // Bitmask for O(1) key lookup
-
-// Get string for a string macro keycode
-static const char* get_string_for_keycode(uint16_t keycode) {
-    switch (keycode) {
-        #define STRNG_X(name, str) case name: return str;
-        #include "strng_x.inc"
-    }
-    return NULL;
-}
-
-static uint16_t char_to_keycode(char c) {
-    if (c >= 0 && c < 128) {
-        uint8_t keycode = pgm_read_byte(&ascii_to_keycode_lut[(uint8_t)c]);
-        return keycode != XXXXXXX ? keycode : KC_NO;
-    }
-    return KC_NO;
-}
-
-// Find matrix position for a keycode by searching the keymap
-static bool find_keycode_position(uint16_t target, uint8_t layer, uint8_t* out_row, uint8_t* out_col) {
-    FOR_EACH_MATRIX_POS() {
-        if (KEYCODE_AT(layer, row, col) == target) {
-            *out_row = row;
-            *out_col = col;
-            return true;
-        }
-    }
-    return false;
-}
-
-// Get matrix position for a character (searches MAC_BASE layer)
-static bool get_matrix_position_for_char(char c, uint8_t* row, uint8_t* col) {
-    uint16_t kc = char_to_keycode(c);
-    if (kc == KC_NO) return false;
-    return find_keycode_position(kc, MAC_BASE, row, col);
-}
-
-// Animation control functions
-static void stop_animation(void) {
-    animation_active = false;
-    animation_string = NULL;
-    animation_index = 0;
-    animation_length = 0;
-    prev_anim_valid = false;
-}
-
-static void start_animation(uint16_t keycode) {
-    const char* str = get_string_for_keycode(keycode);
-    if (str == NULL) return;
-
-    animation_string = str;
-    animation_length = strlen(str);
-    if (animation_length > 32) animation_length = 32;
-
-    // Pre-calculate positions and build bitmask
-    memset(anim_key_mask, 0, sizeof(anim_key_mask));
-    for (uint8_t i = 0; i < animation_length; i++) {
-        uint8_t r, c;
-        if (get_matrix_position_for_char(str[i], &r, &c)) {
-            anim_cache[i].row = r;
-            anim_cache[i].col = c;
-            anim_cache[i].valid = true;
-            anim_key_mask[r] |= (1UL << c);
-        } else {
-            anim_cache[i].valid = false;
-        }
-    }
-
-    animation_index = 0;
-    animation_timer = timer_read();
-    animation_active = true;
-    prev_anim_valid = false;
-}
-
-// Check if a key position is part of the animation string (O(1) via bitmask)
-static inline bool is_key_in_animation_string(uint8_t row, uint8_t col) {
-    return animation_active && (anim_key_mask[row] & (1UL << col));
-}
-
 
 /*| docs/feature_rgb_matrix.md
  *|Key                |Aliases   |Description                                                                           |
@@ -241,7 +120,6 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 // clang-format on
 
 #define IS_F_KEYCODE(keycode) ((keycode) >= KC_F1 && (keycode) <= KC_F12)
-#define IS_STRING_MACRO(keycode) ((keycode) > STRNG_FIRST && (keycode) < STRNG_LAST)
 
 // Вызывается при каждом изменении состояния слоев
 layer_state_t layer_state_set_user(layer_state_t state) {
@@ -310,118 +188,6 @@ static inline void handle_win_lighting(uint8_t row, uint8_t col, uint8_t index, 
 #define MAIN_COLOR_HSV                  (HSV){HSV_MAGENTA}
 #define SECONDARY_COLOR_HSV             (HSV){HSV_CYAN}
 
-#define STRINGS_LAYER_COLOR_HSV         (HSV){HSV_GOLDENROD}
-#define STRINGS_ANIMATION_COLOR_HSV     (HSV){HSV_SPRINGGREEN}
-#define STRINGS_LAYER_PREVIEW_COLOR_HSV (HSV){HSV_WHITE}
-#define STRINGS_LAYER_PREVIEW_DIV       2
-
-static bool rgb_render_strings_layer(uint8_t led_min, uint8_t led_max, uint8_t current_val) {
-    PulsingConfig pulsing_cfg = PULSING_CONFIG_DEFAULT;
-
-    // Colors with effective saturation
-    HSV hsv_strings = STRINGS_LAYER_COLOR_HSV;
-    hsv_strings.v = current_val;
-    RGB rgb_strings = hsv_to_rgb_effective(hsv_strings);
-    RGB rgb_strings_pulsing = rgb_pulsing(hsv_strings, current_val, pulsing_cfg);
-
-    // Animation color
-    HSV hsv_anim = STRINGS_ANIMATION_COLOR_HSV;
-    hsv_anim.v = current_val;
-    RGB rgb_anim = hsv_to_rgb_effective(hsv_anim);
-
-    HSV hsv_preview = STRINGS_LAYER_PREVIEW_COLOR_HSV;
-    hsv_preview.v = current_val / STRINGS_LAYER_PREVIEW_DIV;
-    RGB rgb_anim_preview = hsv_to_rgb_effective(hsv_preview);
-
-    // Update animation state using cached positions
-    uint8_t anim_row = 0, anim_col = 0;
-    bool anim_key_found = false;
-    if (animation_active) {
-        // Get current character position from cache
-        if (anim_cache[animation_index].valid) {
-            anim_row = anim_cache[animation_index].row;
-            anim_col = anim_cache[animation_index].col;
-            anim_key_found = true;
-        }
-        // Check if we need to advance to next character
-        if (timer_elapsed(animation_timer) >= ANIMATION_CHAR_DURATION) {
-            // Save current position as previous for fadeout
-            if (anim_key_found) {
-                prev_anim_row = anim_row;
-                prev_anim_col = anim_col;
-                prev_anim_valid = true;
-                prev_anim_timer = timer_read();
-            }
-            animation_index++;
-            animation_timer = timer_read();
-            // Check if animation finished
-            if (animation_index >= animation_length) {
-                stop_animation();
-                anim_key_found = false;
-            } else {
-                // Update to new character position from cache
-                if (anim_cache[animation_index].valid) {
-                    anim_row = anim_cache[animation_index].row;
-                    anim_col = anim_cache[animation_index].col;
-                    anim_key_found = true;
-                } else {
-                    anim_key_found = false;
-                }
-            }
-        }
-    }
-
-    // Calculate transition progress for previous key (0 = anim color, 255 = target color)
-    uint8_t transition_progress = 255;
-    if (prev_anim_valid) {
-        uint16_t elapsed = timer_elapsed(prev_anim_timer);
-        if (elapsed >= ANIMATION_CHAR_FADEOUT) {
-            prev_anim_valid = false;
-        } else {
-            transition_progress = (elapsed * 255) / ANIMATION_CHAR_FADEOUT;
-        }
-    }
-
-    RGB blend_active = rgb_lerp(rgb_anim, rgb_strings, transition_progress);
-    RGB blend_preview = rgb_lerp(rgb_anim, rgb_anim_preview, transition_progress);
-    RGB blend_off = rgb_lerp(rgb_anim, (RGB){0,0,0}, transition_progress);
-
-    // Render lighting
-    FOR_EACH_LED_IN_RANGE(led_min, led_max) {
-        uint16_t keycode = KEYCODE_AT(STRINGS_LAYER, row, col);
-        bool is_active_key = IS_STRING_MACRO(keycode);
-
-        // Current animation key - full brightness green
-        if (anim_key_found && row == anim_row && col == anim_col) {
-            rgb_matrix_set_color(led_index, rgb_anim.r, rgb_anim.g, rgb_anim.b);
-        }
-        // Previous key - transition from anim color to target color
-        else if (prev_anim_valid && row == prev_anim_row && col == prev_anim_col) {
-            if (is_active_key) {
-                rgb_matrix_set_color(led_index, blend_active.r, blend_active.g, blend_active.b);
-            } else if (is_key_in_animation_string(row, col)) {
-                rgb_matrix_set_color(led_index, blend_preview.r, blend_preview.g, blend_preview.b);
-            } else {
-                rgb_matrix_set_color(led_index, blend_off.r, blend_off.g, blend_off.b);
-            }
-        }
-        // Keys in animation string - preview
-        else if (animation_active && is_key_in_animation_string(row, col)) {
-            rgb_matrix_set_color(led_index, rgb_anim_preview.r, rgb_anim_preview.g, rgb_anim_preview.b);
-        }
-        // Active keys with Fn held - pulsing
-        else if (fn_held_in_strings_layer && is_active_key) {
-            rgb_matrix_set_color(led_index, rgb_strings_pulsing.r, rgb_strings_pulsing.g, rgb_strings_pulsing.b);
-        }
-        // Normal active keys
-        else if (is_active_key) {
-            rgb_matrix_set_color(led_index, rgb_strings.r, rgb_strings.g, rgb_strings.b);
-        }
-        // Other keys - no highlight
-    }
-    return false;
-}
-
 bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
     if (games_render()) {
         return false;
@@ -430,8 +196,8 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
     if (current_val == 0) return false;
 
     // STRINGS_LAYER has priority
-    if (strings_layer_active) {
-        return rgb_render_strings_layer(led_min, led_max, current_val);
+    if (strings_layer_rgb_render(led_min, led_max, current_val, STRINGS_LAYER)) {
+        return false;
     }
 
     uint8_t base_layer;
@@ -473,65 +239,6 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
     return false;
 }
 
-// Deactivates STRINGS_LAYER and resets all related state
-static void deactivate_strings_layer(void) {
-    if (strings_layer_active) {
-        strings_layer_active = false;
-        fn_held_in_strings_layer = false;
-        fn_used_for_combo = false;
-        stop_animation();
-        layer_off(STRINGS_LAYER);
-    }
-}
-
-// Activates STRINGS_LAYER
-static void activate_strings_layer(void) {
-    strings_layer_active = true;
-    layer_on(STRINGS_LAYER);
-}
-
-// Process FN_TAP logic
-static bool process_fn_tap_logic(keyrecord_t *record, uint8_t fn_layer) {
-    if (record->event.pressed) {
-        // In STRINGS_LAYER: Fn press starts hold detection
-        if (strings_layer_active) {
-            fn_held_in_strings_layer = true;
-            fn_used_for_combo = false;
-            fn_strings_timer = timer_read();
-            return false;
-        }
-        // Check for double-tap to activate STRINGS_LAYER
-        if (fn_tap_pending && timer_elapsed(fn_tap_timer) < FN_TAP_TIMEOUT) {
-            fn_tap_pending = false;
-            activate_strings_layer();
-            return false;
-        }
-        // Normal hold — activate Fn layer
-        layer_on(fn_layer);
-        fn_tap_timer = timer_read();
-    } else {
-        // Release in STRINGS_LAYER
-        if (strings_layer_active && fn_held_in_strings_layer) {
-            // Tap (quick release without combo) = exit layer
-            if (!fn_used_for_combo && timer_elapsed(fn_strings_timer) < FN_TAP_TIMEOUT) {
-                deactivate_strings_layer();
-            }
-            fn_held_in_strings_layer = false;
-            fn_used_for_combo = false;
-            return false;
-        }
-        // Normal release
-        fn_held_in_strings_layer = false;
-        layer_off(fn_layer);
-        // Mark as pending tap if it was a quick tap
-        if (timer_elapsed(fn_tap_timer) < FN_TAP_TIMEOUT) {
-            fn_tap_pending = true;
-            fn_tap_timer = timer_read();
-        }
-    }
-    return false;
-}
-
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     if (!games_process_record(keycode, record)) {
         return false;
@@ -542,47 +249,9 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 
     bool is_mac = !IS_LAYER_ON(WIN_BASE);
     uint8_t fn_layer = is_mac ? MAC_FN : WIN_FN;
-    bool is_string_macro = IS_STRING_MACRO(keycode);
 
-    // Handle FN_TAP
-    if (keycode == FN_TAP) {
-        return process_fn_tap_logic(record, fn_layer);
-    }
-
-    // Reset fn_tap_pending on any other key press
-    if (record->event.pressed && fn_tap_pending) {
-        fn_tap_pending = false;
-    }
-
-    // Handle keys while STRINGS_LAYER is active
-    if (strings_layer_active && record->event.pressed) {
-        if (animation_active) {
-            stop_animation();
-        }
-
-        // Fn + string macro = start new animation
-        if (fn_held_in_strings_layer && is_string_macro) {
-            fn_used_for_combo = true;
-            start_animation(keycode);
-            return false;
-        }
-
-        // Fn + empty = exit layer
-        if (fn_held_in_strings_layer && !is_string_macro) {
-            fn_used_for_combo = true;
-            deactivate_strings_layer();
-            return false;
-        }
-
-        // String macro without Fn = execute and exit
-        if (is_string_macro) {
-            deactivate_strings_layer();
-            // Fall through to execute macro below
-        } else {
-            // Empty key without Fn = just exit layer
-            deactivate_strings_layer();
-            return false;
-        }
+    if (!strings_layer_process_record(keycode, record, fn_layer, MAC_BASE, STRINGS_LAYER)) {
+        return false;
     }
 
     switch (keycode) {
@@ -612,9 +281,6 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 dino_game_start();
             }
             return false;
-
-        #define STRNG_X(name, str) case name: if (record->event.pressed) { SEND_STRING(str); } return false;
-        #include "strng_x.inc"
     }
 
     return true;
