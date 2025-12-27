@@ -1,6 +1,7 @@
 #pragma once
 
 #include QMK_KEYBOARD_H  // IWYU pragma: keep
+#include "custom_keycodes.h" // IWYU pragma: keep
 
 // Common interface for all games
 typedef struct {
@@ -12,38 +13,27 @@ typedef struct {
     void (*render)(void);
 } GameInterface;
 
-// Forward declarations
-#include "snake.h"
-#include "life.h"
-#include "dino.h"
-#include "custom_keycodes.h"
 
-// Registry of all available games
+#define GAME_X(run_keycode, prefix) \
+bool prefix##_is_active(void); \
+void prefix##_game_start(void); \
+void prefix##_game_task(void); \
+bool prefix##_game_process_record(uint16_t keycode, keyrecord_t *record); \
+void prefix##_game_render(void);
+
+#include "games_x.inc"
+
 static const GameInterface games[] = {
-    {
-        .trigger_keycode = RUN_SNAKE,
-        .start = snake_game_start,
-        .is_active = snake_is_active,
-        .task = snake_game_task,
-        .process_record = snake_game_process_record,
-        .render = snake_game_render,
-    },
-    {
-        .trigger_keycode = RUN_LIFE,
-        .start = life_game_start,
-        .is_active = life_is_active,
-        .task = life_game_task,
-        .process_record = life_game_process_record,
-        .render = life_game_render,
-    },
-    {
-        .trigger_keycode = RUN_DINO,
-        .start = dino_game_start,
-        .is_active = dino_is_active,
-        .task = dino_game_task,
-        .process_record = dino_game_process_record,
-        .render = dino_game_render,
-    },
+#define GAME_X(run_keycode, prefix) \
+{\
+    .trigger_keycode = run_keycode,\
+    .start = prefix##_game_start,\
+    .is_active = prefix##_is_active,\
+    .task = prefix##_game_task,\
+    .process_record = prefix##_game_process_record,\
+    .render = prefix##_game_render,\
+},
+#include "games_x.inc"
 };
 
 #define GAMES_COUNT (sizeof(games) / sizeof(games[0]))
