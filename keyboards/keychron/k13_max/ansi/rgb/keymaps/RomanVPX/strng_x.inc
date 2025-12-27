@@ -1,5 +1,5 @@
 #ifndef STRNG_X
-    #error "STRNG_X must be defined before including strng.inc"
+    #error "STRNG_X must be defined before including strng_x.inc"
 #endif
 
 STRNG_X(STRNG_C, "t:camera")
