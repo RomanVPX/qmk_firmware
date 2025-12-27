@@ -6,6 +6,16 @@
 #define LIFE_HEIGHT GRID_HEIGHT
 #define LIFE_SPEED_MS 300
 
+#define TOPOLOGY_TOROIDAL 0
+#define TOPOLOGY_CYLINDRICAL 1
+#define TOPOLOGY_MOEBIUS_STRIP_VERTICAL 2 // Connects top and bottom rows
+#define TOPOLOGY_MOEBIUS_STRIP_HORIZONTAL 3 // Connects left and right columns
+#define TOPOLOGY_KLEIN_BOTTLE_HORIZONTAL 4 // Flip on left and right columns
+#define TOPOLOGY_KLEIN_BOTTLE_VERTICAL 5 // Flip on top and bottom rows
+#define TOPOLOGY_RP_PLANE 6
+
+#define TOPOLOGY TOPOLOGY_KLEIN_BOTTLE_HORIZONTAL
+
 #define LIFE_COLOR_ALIVE    RGB_SPRINGGREEN
 #define LIFE_COLOR_DYING    RGB_RED
 #define LIFE_COLOR_BG       10, 5, 8
@@ -54,17 +64,90 @@ void life_game_stop(void) {
     life_active = false;
 }
 
-// Check neighbors.
 static uint8_t count_neighbors(int8_t x, int8_t y) {
     uint8_t count = 0;
     for (int8_t dy = -1; dy <= 1; dy++) {
         for (int8_t dx = -1; dx <= 1; dx++) {
             if (dx == 0 && dy == 0) continue;
-
-            // Cyclic boundary conditions - toroidal grid
+#if TOPOLOGY == TOPOLOGY_TOROIDAL
             int8_t nx = (x + dx + LIFE_WIDTH) % LIFE_WIDTH;
             int8_t ny = (y + dy + LIFE_HEIGHT) % LIFE_HEIGHT;
+#elif TOPOLOGY == TOPOLOGY_CYLINDRICAL
+            int8_t nx = (x + dx + LIFE_WIDTH) % LIFE_WIDTH;
+            int8_t ny = y + dy;
+            if (ny < 0 || ny >= LIFE_HEIGHT) continue;
+#elif TOPOLOGY == TOPOLOGY_MOEBIUS_STRIP_VERTICAL
+            int8_t ny = y + dy;
+            int8_t nx = x + dx;
 
+            if (nx < 0 || nx >= LIFE_WIDTH) continue;
+
+            if (ny < 0) {
+                ny = LIFE_HEIGHT - 1;
+                nx = (LIFE_WIDTH - 1) - nx;
+            } else if (ny >= LIFE_HEIGHT) {
+                ny = 0;
+                nx = (LIFE_WIDTH - 1) - nx;
+            }
+#elif TOPOLOGY == TOPOLOGY_MOEBIUS_STRIP_HORIZONTAL
+            int8_t nx = x + dx;
+            int8_t ny = y + dy;
+
+            if (ny < 0 || ny >= LIFE_HEIGHT) continue;
+
+            if (nx < 0) {
+                nx = LIFE_WIDTH - 1;
+                ny = (LIFE_HEIGHT - 1) - ny;
+            } else if (nx >= LIFE_WIDTH) {
+                nx = 0;
+                ny = (LIFE_HEIGHT - 1) - ny;
+            }
+#elif TOPOLOGY == TOPOLOGY_KLEIN_BOTTLE_VERTICAL
+            int8_t nx = (x + dx + LIFE_WIDTH) % LIFE_WIDTH;
+            int8_t ny = y + dy;
+
+            if (ny < 0) {
+                ny = LIFE_HEIGHT - 1;
+                nx = (LIFE_WIDTH - 1) - nx;
+            } else if (ny >= LIFE_HEIGHT) {
+                ny = 0;
+                nx = (LIFE_WIDTH - 1) - nx;
+            }
+#elif TOPOLOGY == TOPOLOGY_KLEIN_BOTTLE_HORIZONTAL
+            int8_t ny = (y + dy + LIFE_HEIGHT) % LIFE_HEIGHT;
+            int8_t nx = x + dx;
+
+            if (nx < 0) {
+                nx = LIFE_WIDTH - 1;
+                ny = (LIFE_HEIGHT - 1) - ny;
+            } else if (nx >= LIFE_WIDTH) {
+                nx = 0;
+                ny = (LIFE_HEIGHT - 1) - ny;
+            }
+#elif TOPOLOGY == TOPOLOGY_RP_PLANE
+            int8_t nx = x + dx;
+            int8_t ny = y + dy;
+
+            if (nx < 0) {
+                nx = LIFE_WIDTH - 1;
+                ny = (LIFE_HEIGHT - 1) - ny;
+            } else if (nx >= LIFE_WIDTH) {
+                nx = 0;
+                ny = (LIFE_HEIGHT - 1) - ny;
+            }
+
+            if (ny < 0) {
+                ny = LIFE_HEIGHT - 1;
+                nx = (LIFE_WIDTH - 1) - nx;
+            } else if (ny >= LIFE_HEIGHT) {
+                ny = 0;
+                nx = (LIFE_WIDTH - 1) - nx;
+            }
+#else // bounded planar
+            int8_t nx = x + dx;
+            int8_t ny = y + dy;
+            if (nx < 0 || nx >= LIFE_WIDTH || ny < 0 || ny >= LIFE_HEIGHT) continue;
+#endif
             if (life_state_grid[ny][nx]) count++;
         }
     }
