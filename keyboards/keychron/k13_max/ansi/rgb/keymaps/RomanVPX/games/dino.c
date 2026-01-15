@@ -11,7 +11,7 @@
 #define DINO_GROUND_Y   (DINO_HEIGHT - 1)  // Physical Row 4 (Z,X...) - ground
 #define DINO_RUN_Y      (DINO_HEIGHT - 2)  // Physical Row 3 (A,S...) - dino runs here
 #define DINO_JUMP_Y     (DINO_HEIGHT - 3)  // Physical Row 2 (Q,W...) - jump height
-#define DINO_START_X    1                   // Dino's home X position
+#define DINO_START_X    1                  // Dino's home X position
 
 // Colors
 #define DINO_COLOR_DINO         RGB_GREEN

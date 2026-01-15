@@ -10,7 +10,7 @@ enum custom_keycodes {
     TOGGLE_F_LAYER,
     FN_TAP,
     #define GAME_X(run_keycode, prefix) run_keycode,
-    #include "games_x.inc"
+    #include "games/games_x.inc"
 };
 
 #define IS_STRING_MACRO(keycode) ((keycode) > STRNG_FIRST && (keycode) < STRNG_LAST)

@@ -20,7 +20,6 @@ void prefix##_game_start(void); \
 void prefix##_game_task(void); \
 bool prefix##_game_process_record(uint16_t keycode, keyrecord_t *record); \
 void prefix##_game_render(void);
-
 #include "games_x.inc"
 
 static const GameInterface games[] = {

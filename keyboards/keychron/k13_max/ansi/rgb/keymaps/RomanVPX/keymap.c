@@ -18,7 +18,7 @@
 #include "keychron_common.h"
 #include "rgb_utils.h"
 #include "matrix_utils.h"
-#include "game_interface.h"
+#include "games/game_interface.h"
 #include "custom_keycodes.h"
 #include "strings_layer.h"
 
