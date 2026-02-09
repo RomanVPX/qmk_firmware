@@ -26,7 +26,7 @@ bool snake_is_active(void) {
     return snake_active;
 }
 
-static uint32_t snake_timer = 0;
+static uint16_t snake_timer = 0;
 static SnakePoint snake_body[SNAKE_MAX_LENGTH];
 static uint8_t snake_len = 0;
 static SnakePoint snake_food;
@@ -56,14 +56,13 @@ static uint8_t snake_pop_input(void) {
 }
 
 static void snake_spawn_food(void) {
-    while (true) {
+    // Fast path: random placement
+    for (uint8_t attempt = 0; attempt < 20; attempt++) {
         snake_food.x = game_random(SNAKE_WIDTH);
         snake_food.y = game_random(SNAKE_HEIGHT);
 
-        // Check if valid position (not 0xFF in map)
         if (pgm_read_byte(&GRID_MAP[snake_food.y][snake_food.x]) == 0xFF) continue;
 
-        // Check collision with snake
         bool collision = false;
         for (uint8_t i = 0; i < snake_len; i++) {
             if (snake_body[i].x == snake_food.x && snake_body[i].y == snake_food.y) {
@@ -71,7 +70,30 @@ static void snake_spawn_food(void) {
                 break;
             }
         }
-        if (!collision) break;
+        if (!collision) return;
+    }
+
+    // Deterministic fallback: linear scan from random offset
+    uint8_t total = SNAKE_WIDTH * SNAKE_HEIGHT;
+    uint8_t start = game_random(total);
+    for (uint8_t i = 0; i < total; i++) {
+        uint8_t idx = (start + i) % total;
+        uint8_t fx = idx % SNAKE_WIDTH;
+        uint8_t fy = idx / SNAKE_WIDTH;
+        if (pgm_read_byte(&GRID_MAP[fy][fx]) == 0xFF) continue;
+
+        bool collision = false;
+        for (uint8_t j = 0; j < snake_len; j++) {
+            if (snake_body[j].x == fx && snake_body[j].y == fy) {
+                collision = true;
+                break;
+            }
+        }
+        if (!collision) {
+            snake_food.x = fx;
+            snake_food.y = fy;
+            return;
+        }
     }
 }
 

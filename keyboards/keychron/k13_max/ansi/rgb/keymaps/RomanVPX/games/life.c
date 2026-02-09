@@ -25,7 +25,7 @@
 #define DISPLAY_ALIVE 255
 
 static bool life_active = false;
-static uint32_t life_timer = 0;
+static uint16_t life_timer = 0;
 static bool life_paused = false;
 static uint8_t life_display_grid[LIFE_HEIGHT][LIFE_WIDTH];
 static bool life_state_grid[LIFE_HEIGHT][LIFE_WIDTH];

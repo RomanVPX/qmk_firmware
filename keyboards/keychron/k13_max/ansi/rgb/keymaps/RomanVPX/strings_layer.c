@@ -196,10 +196,8 @@ bool strings_layer_process_record(uint16_t keycode, keyrecord_t *record, uint8_t
             return false;
         }
 
-        if (is_string_macro) {
-            deactivate_strings_layer(strings_layer);
-        } else {
-            deactivate_strings_layer(strings_layer);
+        deactivate_strings_layer(strings_layer);
+        if (!is_string_macro) {
             return false;
         }
     }

@@ -38,8 +38,8 @@ typedef struct {
 } Obstacle;
 
 static bool dino_active = false;
-static uint32_t dino_timer = 0;
-static uint32_t ground_timer = 0;
+static uint16_t dino_timer = 0;
+static uint16_t ground_timer = 0;
 static bool dino_game_over = false;
 
 // Dino state
