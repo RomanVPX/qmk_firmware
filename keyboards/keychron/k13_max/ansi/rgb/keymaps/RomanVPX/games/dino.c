@@ -4,7 +4,10 @@
 
 #define DINO_WIDTH GRID_WIDTH
 #define DINO_HEIGHT GRID_HEIGHT
-#define DINO_SPEED_MS 120
+#define DINO_SPEED_MS        120
+#define DINO_SPEED_MIN       60
+#define DINO_SPEED_STEP      5
+#define DINO_SPEED_PER       3
 #define DINO_GROUND_SPEED_MS 80
 
 // Grid rows (without F_ROW): 0=numbers, 1=QWERTY, 2=ASDF, 3=ZXCV
@@ -41,6 +44,7 @@ static bool dino_active = false;
 static uint16_t dino_timer = 0;
 static uint16_t ground_timer = 0;
 static bool dino_game_over = false;
+static uint16_t dino_score = 0;
 
 // Dino state
 static uint8_t dino_x = DINO_START_X;
@@ -105,6 +109,7 @@ void dino_game_start(void) {
     spawn_counter = 0;
     next_spawn = OBSTACLE_SPAWN_MIN;
     ground_offset = 0;
+    dino_score = 0;
 }
 
 static void dino_game_stop(void) {
@@ -152,6 +157,7 @@ static void dino_update(void) {
             obstacles[i].x--;
             if (obstacles[i].x < 0) {
                 obstacles[i].active = false;
+                dino_score++;
             }
         }
     }
@@ -171,15 +177,21 @@ static void dino_update(void) {
 void dino_game_task(void) {
     if (!dino_active) return;
 
+    uint16_t reduction = (dino_score / DINO_SPEED_PER) * DINO_SPEED_STEP;
+    uint16_t speed = (reduction >= DINO_SPEED_MS - DINO_SPEED_MIN)
+                   ? DINO_SPEED_MIN
+                   : DINO_SPEED_MS - reduction;
+    uint16_t ground_speed = (uint16_t)DINO_GROUND_SPEED_MS * speed / DINO_SPEED_MS;
+
     // Update ground animation faster
-    if (timer_elapsed(ground_timer) > DINO_GROUND_SPEED_MS) {
+    if (timer_elapsed(ground_timer) > ground_speed) {
         ground_offset = (ground_offset + 1) % DINO_WIDTH;
         ground_timer = timer_read();
     }
 
     if (dino_game_over) return;
 
-    if (timer_elapsed(dino_timer) > DINO_SPEED_MS) {
+    if (timer_elapsed(dino_timer) > speed) {
         dino_update();
         dino_timer = timer_read();
     }
@@ -273,4 +285,6 @@ void dino_game_render(void) {
             rgb_matrix_set_color(l_idx, DINO_COLOR_DINO);
         }
     }
+
+    render_score_bar(dino_score, dino_game_over);
 }

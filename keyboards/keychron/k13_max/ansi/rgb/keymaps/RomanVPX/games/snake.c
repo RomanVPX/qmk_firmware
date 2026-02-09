@@ -5,7 +5,11 @@
 #define SNAKE_WIDTH GRID_WIDTH
 #define SNAKE_HEIGHT GRID_HEIGHT
 #define SNAKE_MAX_LENGTH (SNAKE_WIDTH * SNAKE_HEIGHT)
-#define SNAKE_SPEED_MS 400
+#define SNAKE_SPEED_MS       400
+#define SNAKE_SPEED_MIN      150
+#define SNAKE_SPEED_STEP     25
+#define SNAKE_SPEED_PER      3
+#define SNAKE_INITIAL_LEN    3
 
 #define SNAKE_COLOR_HEAD     RGB_CYAN
 #define SNAKE_COLOR_BODY     RGB_GREEN
@@ -178,7 +182,13 @@ static void snake_update(void) {
 void snake_game_task(void) {
     if (!snake_active || snake_game_over) return;
 
-    if (timer_elapsed(snake_timer) > SNAKE_SPEED_MS) {
+    uint8_t score = snake_len > SNAKE_INITIAL_LEN ? snake_len - SNAKE_INITIAL_LEN : 0;
+    uint16_t reduction = (score / SNAKE_SPEED_PER) * SNAKE_SPEED_STEP;
+    uint16_t speed = (reduction >= SNAKE_SPEED_MS - SNAKE_SPEED_MIN)
+                   ? SNAKE_SPEED_MIN
+                   : SNAKE_SPEED_MS - reduction;
+
+    if (timer_elapsed(snake_timer) > speed) {
         snake_update();
         snake_timer = timer_read();
     }
@@ -204,6 +214,9 @@ bool snake_game_process_record(uint16_t keycode, keyrecord_t *record) {
         case KC_ESC:
             if (record->event.pressed) snake_game_stop();
             return false;
+        case KC_SPC:
+            if (record->event.pressed && snake_game_over) snake_game_start();
+            return false;
     }
 
     if (record->event.pressed) {
@@ -224,11 +237,14 @@ void snake_game_render(void) {
         rgb_matrix_set_color(grid_led_index, SNAKE_COLOR_BG);
     }
 
+    uint8_t score = snake_len > SNAKE_INITIAL_LEN ? snake_len - SNAKE_INITIAL_LEN : 0;
+
     if (snake_game_over) {
         for (uint8_t i = 0; i < snake_len; i++) {
             uint8_t l_idx = grid_get_led(snake_body[i].y, snake_body[i].x);
             if (l_idx != NO_LED) rgb_matrix_set_color(l_idx, SNAKE_COLOR_DEATH);
         }
+        render_score_bar(score, true);
         return;
     }
 
@@ -247,4 +263,6 @@ void snake_game_render(void) {
             }
         }
     }
+
+    render_score_bar(score, false);
 }

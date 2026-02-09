@@ -48,6 +48,15 @@ static inline uint8_t rgb_pulsing_value(uint8_t max_value, PulsingConfig config,
     return min_v + scale8(sin_wave, max_value - min_v);
 }
 
+// Apply pulsing effect to raw RGB values
+static inline RGB rgb_pulsing_raw(RGB color, PulsingConfig config, uint8_t phase_offset) {
+    uint8_t pulse_val = rgb_pulsing_value(255, config, phase_offset);
+    color.r = scale8(color.r, pulse_val);
+    color.g = scale8(color.g, pulse_val);
+    color.b = scale8(color.b, pulse_val);
+    return color;
+}
+
 // Create pulsing RGB color from HSV (with effective saturation) and phase offset
 static inline RGB rgb_pulsing(HSV hsv, uint8_t max_value, PulsingConfig config, uint8_t phase_offset) {
     hsv.v = rgb_pulsing_value(max_value, config, phase_offset);
