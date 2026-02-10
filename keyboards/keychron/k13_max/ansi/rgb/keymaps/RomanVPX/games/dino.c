@@ -177,10 +177,7 @@ static void dino_update(void) {
 void dino_game_task(void) {
     if (!dino_active) return;
 
-    uint16_t reduction = (dino_score / DINO_SPEED_PER) * DINO_SPEED_STEP;
-    uint16_t speed = (reduction >= DINO_SPEED_MS - DINO_SPEED_MIN)
-                   ? DINO_SPEED_MIN
-                   : DINO_SPEED_MS - reduction;
+    uint16_t speed = game_speed(dino_score, DINO_SPEED_PER, DINO_SPEED_STEP, DINO_SPEED_MS, DINO_SPEED_MIN);
     uint16_t ground_speed = (uint16_t)DINO_GROUND_SPEED_MS * speed / DINO_SPEED_MS;
 
     // Update ground animation faster

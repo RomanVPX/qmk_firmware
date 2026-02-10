@@ -263,15 +263,15 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         return false;
     }
 
-    switch (keycode) {
-        case TOGGLE_F_LAYER:
-            if (record->event.pressed) {
-                if (layer_state_is(MAC_F_LAYER)) {
-                    layer_off(MAC_F_LAYER);
-                } else {
-                    layer_on(MAC_F_LAYER);
-                }
-            } return false;
+    if (keycode == TOGGLE_F_LAYER) {
+        if (record->event.pressed) {
+            if (layer_state_is(MAC_F_LAYER)) {
+                layer_off(MAC_F_LAYER);
+            } else {
+                layer_on(MAC_F_LAYER);
+            }
+        }
+        return false;
     }
 
     return true;

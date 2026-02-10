@@ -59,6 +59,10 @@ static uint8_t snake_pop_input(void) {
     return val;
 }
 
+static inline uint8_t snake_score(void) {
+    return snake_len > SNAKE_INITIAL_LEN ? snake_len - SNAKE_INITIAL_LEN : 0;
+}
+
 static void snake_spawn_food(void) {
     // Fast path: random placement
     for (uint8_t attempt = 0; attempt < 20; attempt++) {
@@ -182,11 +186,8 @@ static void snake_update(void) {
 void snake_game_task(void) {
     if (!snake_active || snake_game_over) return;
 
-    uint8_t score = snake_len > SNAKE_INITIAL_LEN ? snake_len - SNAKE_INITIAL_LEN : 0;
-    uint16_t reduction = (score / SNAKE_SPEED_PER) * SNAKE_SPEED_STEP;
-    uint16_t speed = (reduction >= SNAKE_SPEED_MS - SNAKE_SPEED_MIN)
-                   ? SNAKE_SPEED_MIN
-                   : SNAKE_SPEED_MS - reduction;
+    uint8_t score = snake_score();
+    uint16_t speed = game_speed(score, SNAKE_SPEED_PER, SNAKE_SPEED_STEP, SNAKE_SPEED_MS, SNAKE_SPEED_MIN);
 
     if (timer_elapsed(snake_timer) > speed) {
         snake_update();
@@ -237,7 +238,7 @@ void snake_game_render(void) {
         rgb_matrix_set_color(grid_led_index, SNAKE_COLOR_BG);
     }
 
-    uint8_t score = snake_len > SNAKE_INITIAL_LEN ? snake_len - SNAKE_INITIAL_LEN : 0;
+    uint8_t score = snake_score();
 
     if (snake_game_over) {
         for (uint8_t i = 0; i < snake_len; i++) {

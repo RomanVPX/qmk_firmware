@@ -15,6 +15,12 @@ static inline uint8_t game_random(uint8_t max) {
     return rng_state % max;
 }
 
+// Calculate game speed with score-based acceleration
+static inline uint16_t game_speed(uint16_t score, uint16_t per, uint16_t step, uint16_t base, uint16_t min_speed) {
+    uint16_t reduction = (score / per) * step;
+    return (reduction >= base - min_speed) ? min_speed : base - reduction;
+}
+
 // Score bar on F-key row (matrix row 0, cols 2–13 = F1–F12)
 #define SCORE_BAR_ROW       0
 #define SCORE_BAR_COL_START 2
