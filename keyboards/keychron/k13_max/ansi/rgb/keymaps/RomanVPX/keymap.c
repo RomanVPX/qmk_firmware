@@ -277,6 +277,10 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     return true;
 }
 
+void eeconfig_init_user(void) {
+    eeconfig_update_user(0);
+}
+
 void matrix_scan_user(void) {
     games_task();
 }

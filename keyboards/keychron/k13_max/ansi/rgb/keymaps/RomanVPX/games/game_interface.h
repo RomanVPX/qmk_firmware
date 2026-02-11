@@ -14,7 +14,7 @@ typedef struct {
 } GameInterface;
 
 
-#define GAME_X(run_keycode, prefix) \
+#define GAME_X(run_keycode, prefix, score_type) \
 bool prefix##_is_active(void); \
 void prefix##_game_start(void); \
 void prefix##_game_task(void); \
@@ -23,7 +23,7 @@ void prefix##_game_render(void);
 #include "games_x.inc"
 
 static const GameInterface games[] = {
-#define GAME_X(run_keycode, prefix) \
+#define GAME_X(run_keycode, prefix, score_type) \
 {\
     .trigger_keycode = run_keycode,\
     .start = prefix##_game_start,\

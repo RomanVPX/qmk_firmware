@@ -9,7 +9,7 @@ enum custom_keycodes {
     STRNG_LAST,
     TOGGLE_F_LAYER,
     FN_TAP,
-    #define GAME_X(run_keycode, prefix) run_keycode,
+    #define GAME_X(run_keycode, prefix, score_type) run_keycode,
     #include "games/games_x.inc"
 };
 

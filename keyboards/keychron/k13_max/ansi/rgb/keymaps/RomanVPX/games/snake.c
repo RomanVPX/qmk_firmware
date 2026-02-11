@@ -39,6 +39,8 @@ static int8_t snake_dir_y = 0;
 static int8_t snake_next_dir_x = 1;
 static int8_t snake_next_dir_y = 0;
 static bool snake_game_over = false;
+static uint16_t snake_high_score = 0;
+static bool snake_new_record = false;
 
 static uint8_t input_buffer[INPUT_BUFFER_SIZE];
 static uint8_t input_head = 0;
@@ -113,6 +115,12 @@ void snake_game_start(void) {
     input_tail = 0;
 
     snake_game_over = false;
+    snake_new_record = false;
+    firework_stop();
+
+    high_scores_t hs = high_scores_read();
+    snake_high_score = hs.snake;
+
     snake_len = 3;
     snake_body[0] = (SnakePoint){2, 1};
     snake_body[1] = (SnakePoint){1, 1};
@@ -121,16 +129,11 @@ void snake_game_start(void) {
     snake_next_dir_x = 1; snake_next_dir_y = 0;
     snake_spawn_food();
     snake_timer = timer_read();
-
-    // Disable other RGB effects and clear
-    // We rely on our render hook to draw over whatever is there,
-    // but setting solid black helps if our hook doesn't cover everything.
-    // However, we want to respect user's RGB mode when we exit.
-    // So we just override in the render function.
 }
 
 void snake_game_stop(void) {
     snake_active = false;
+    firework_stop();
 }
 
 static void snake_update(void) {
@@ -192,6 +195,10 @@ void snake_game_task(void) {
     if (timer_elapsed(snake_timer) > speed) {
         snake_update();
         snake_timer = timer_read();
+
+        if (snake_game_over) {
+            UPDATE_HIGH_SCORE(score, snake_high_score, snake_new_record, snake);
+        }
     }
 }
 
@@ -241,9 +248,13 @@ void snake_game_render(void) {
     uint8_t score = snake_score();
 
     if (snake_game_over) {
-        for (uint8_t i = 0; i < snake_len; i++) {
-            uint8_t l_idx = grid_get_led(snake_body[i].y, snake_body[i].x);
-            if (l_idx != NO_LED) rgb_matrix_set_color(l_idx, SNAKE_COLOR_DEATH);
+        if (snake_new_record) {
+            firework_render();
+        } else {
+            for (uint8_t i = 0; i < snake_len; i++) {
+                uint8_t l_idx = grid_get_led(snake_body[i].y, snake_body[i].x);
+                if (l_idx != NO_LED) rgb_matrix_set_color(l_idx, SNAKE_COLOR_DEATH);
+            }
         }
         render_score_bar(score, true);
         return;
@@ -265,5 +276,9 @@ void snake_game_render(void) {
         }
     }
 
-    render_score_bar(score, false);
+    if (score == 0 && snake_high_score > 0) {
+        render_score_bar(snake_high_score, false);
+    } else {
+        render_score_bar(score, false);
+    }
 }

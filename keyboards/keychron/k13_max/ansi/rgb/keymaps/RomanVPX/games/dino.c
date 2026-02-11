@@ -45,6 +45,8 @@ static uint16_t dino_timer = 0;
 static uint16_t ground_timer = 0;
 static bool dino_game_over = false;
 static uint16_t dino_score = 0;
+static uint16_t dino_high_score = 0;
+static bool dino_new_record = false;
 
 // Dino state
 static uint8_t dino_x = DINO_START_X;
@@ -93,6 +95,12 @@ static bool check_collision(void) {
 void dino_game_start(void) {
     dino_active = true;
     dino_game_over = false;
+    dino_new_record = false;
+    firework_stop();
+
+    high_scores_t hs = high_scores_read();
+    dino_high_score = hs.dino;
+
     dino_timer = timer_read();
     ground_timer = timer_read();
 
@@ -114,6 +122,7 @@ void dino_game_start(void) {
 
 static void dino_game_stop(void) {
     dino_active = false;
+    firework_stop();
 }
 
 static void update_jump(void) {
@@ -191,6 +200,10 @@ void dino_game_task(void) {
     if (timer_elapsed(dino_timer) > speed) {
         dino_update();
         dino_timer = timer_read();
+
+        if (dino_game_over) {
+            UPDATE_HIGH_SCORE(dino_score, dino_high_score, dino_new_record, dino);
+        }
     }
 }
 
@@ -229,6 +242,22 @@ void dino_game_render(void) {
     rgb_matrix_set_color_all(RGB_OFF);
 
     RGB bg = rgb_make(DINO_COLOR_BG);
+
+    // New record: firework on dark background
+    if (dino_game_over && dino_new_record) {
+        for (uint8_t y = 0; y < DINO_HEIGHT; y++) {
+            for (uint8_t x = 0; x < DINO_WIDTH; x++) {
+                uint8_t l_idx = grid_get_led(y, x);
+                if (l_idx != NO_LED) {
+                    rgb_matrix_set_color(l_idx, bg.r, bg.g, bg.b);
+                }
+            }
+        }
+        firework_render();
+        render_score_bar(dino_score, true);
+        return;
+    }
+
     RGB ground_dim = rgb_make(DINO_COLOR_GROUND_DIM);
     RGB ground_bright = rgb_make(DINO_COLOR_GROUND_BRIGHT);
 
@@ -283,5 +312,9 @@ void dino_game_render(void) {
         }
     }
 
-    render_score_bar(dino_score, dino_game_over);
+    if (dino_score == 0 && dino_high_score > 0) {
+        render_score_bar(dino_high_score, false);
+    } else {
+        render_score_bar(dino_score, dino_game_over);
+    }
 }
