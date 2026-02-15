@@ -180,9 +180,9 @@ static inline void handle_win_lighting(uint8_t row, uint8_t col, uint8_t index, 
     }
 }
 
-#define INDICATOR_MAX_VALUE RGB_MATRIX_MAXIMUM_BRIGHTNESS
+// #define INDICATOR_MAX_VALUE rgb_matrix_get_val()
 #ifndef INDICATOR_MAX_VALUE
-    #define INDICATOR_MAX_VALUE rgb_matrix_get_val()
+    #define INDICATOR_MAX_VALUE RGB_MATRIX_MAXIMUM_BRIGHTNESS
 #endif
 
 #define MAIN_COLOR_HSV                  (HSV){HSV_MAGENTA}
