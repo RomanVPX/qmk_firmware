@@ -24,7 +24,7 @@ uint16_t game_speed(uint16_t score, uint16_t per, uint16_t step, uint16_t base, 
 // --- High Scores ---
 high_scores_t high_scores_read(void) {
     high_scores_t hs;
-    eeprom_read_block(&hs, (void*)EECONFIG_USER, sizeof(high_scores_t));
+    eeprom_read_block(&hs, (void*)EECONFIG_USER_DATABLOCK, sizeof(high_scores_t));
     if (hs.magic != HIGH_SCORE_MAGIC) {
         memset(&hs, 0, sizeof(high_scores_t));
         hs.magic = HIGH_SCORE_MAGIC;
@@ -35,7 +35,7 @@ high_scores_t high_scores_read(void) {
 
 void high_scores_write(high_scores_t hs) {
     hs.magic = HIGH_SCORE_MAGIC; // Ensure magic is set
-    eeprom_update_block(&hs, (void*)EECONFIG_USER, sizeof(high_scores_t));
+    eeprom_update_block(&hs, (void*)EECONFIG_USER_DATABLOCK, sizeof(high_scores_t));
 }
 
 // --- Score Bar ---
