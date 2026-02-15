@@ -21,6 +21,9 @@
 #include "games/game_interface.h"
 #include "custom_keycodes.h"
 #include "strings_layer.h"
+#ifdef LK_WIRELESS_ENABLE
+    #include "lpm.h"
+#endif
 
 enum layers {
     MAC_BASE,
@@ -185,6 +188,18 @@ static inline void handle_win_lighting(uint8_t row, uint8_t col, uint8_t index, 
     #define INDICATOR_MAX_VALUE RGB_MATRIX_MAXIMUM_BRIGHTNESS
 #endif
 
+#ifndef F_LAYER_IDLE_TIMEOUT_MS
+    #define F_LAYER_IDLE_TIMEOUT_MS 60000
+#endif
+
+static inline bool is_f_layer_idle(void) {
+#ifdef LK_WIRELESS_ENABLE
+    return !usb_power_connected() && last_input_activity_elapsed() >= F_LAYER_IDLE_TIMEOUT_MS;
+#else
+    return false;
+#endif
+}
+
 #define MAIN_COLOR_HSV                  (HSV){HSV_MAGENTA}
 #define SECONDARY_COLOR_HSV             (HSV){HSV_CYAN}
 
@@ -229,7 +244,7 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
     }
 
     bool is_mac_fn = layer_state_is(MAC_FN);
-    bool is_mac_f_layer = layer_state_is(MAC_F_LAYER);
+    bool is_mac_f_layer = layer_state_is(MAC_F_LAYER) && !is_f_layer_idle();
     bool is_win_fn = layer_state_is(WIN_FN);
 
     // Skip palette calculation if no indicators needed
