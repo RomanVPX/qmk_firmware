@@ -61,7 +61,7 @@ static uint8_t snake_pop_input(void) {
     return val;
 }
 
-static inline uint8_t snake_score(void) {
+static inline uint16_t snake_score(void) {
     return snake_len > SNAKE_INITIAL_LEN ? snake_len - SNAKE_INITIAL_LEN : 0;
 }
 
@@ -189,7 +189,7 @@ static void snake_update(void) {
 void snake_game_task(void) {
     if (!snake_active || snake_game_over) return;
 
-    uint8_t score = snake_score();
+    uint16_t score = snake_score();
     uint16_t speed = game_speed(score, SNAKE_SPEED_PER, SNAKE_SPEED_STEP, SNAKE_SPEED_MS, SNAKE_SPEED_MIN);
 
     if (timer_elapsed(snake_timer) > speed) {
@@ -245,7 +245,7 @@ void snake_game_render(void) {
         rgb_matrix_set_color(grid_led_index, SNAKE_COLOR_BG);
     }
 
-    uint8_t score = snake_score();
+    uint16_t score = snake_score();
 
     if (snake_game_over) {
         if (snake_new_record) {
