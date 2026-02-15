@@ -6,6 +6,7 @@
 
 #define FN_TAP_TIMEOUT 200
 
+#define ANIMATION_MAX_LENGTH 32
 #define ANIMATION_CHAR_DURATION 600
 #define ANIMATION_CHAR_FADEOUT 500
 
@@ -37,8 +38,9 @@ static uint8_t prev_anim_col = 0;
 static bool prev_anim_valid = false;
 static uint16_t prev_anim_timer = 0;
 
-static KeyPosCache anim_cache[32];
+static KeyPosCache anim_cache[ANIMATION_MAX_LENGTH];
 static uint32_t anim_key_mask[MATRIX_ROWS];
+_Static_assert(MATRIX_COLS <= 32, "anim_key_mask requires MATRIX_COLS <= 32 for uint32_t bitmask");
 
 static const char *get_string_for_keycode(uint16_t keycode) {
     switch (keycode) {
@@ -91,8 +93,8 @@ static void start_animation(uint16_t keycode, uint8_t base_layer) {
 
     animation_string = str;
     animation_length = strlen(str);
-    if (animation_length > 32) {
-        animation_length = 32;
+    if (animation_length > ANIMATION_MAX_LENGTH) {
+        animation_length = ANIMATION_MAX_LENGTH;
     }
 
     memset(anim_key_mask, 0, sizeof(anim_key_mask));
