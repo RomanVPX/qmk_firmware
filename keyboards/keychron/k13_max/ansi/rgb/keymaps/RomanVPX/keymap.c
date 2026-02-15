@@ -174,8 +174,8 @@ static inline void handle_mac_lighting(uint8_t row, uint8_t col, uint8_t index, 
     }
 }
 
-static inline void handle_win_lighting(uint8_t row, uint8_t col, uint8_t index, const RGB* static_color) {
-    if (layer_state_is(WIN_FN) && is_key_modified_in_layer(row, col, WIN_BASE, WIN_FN)) {
+static inline void handle_win_lighting(uint8_t row, uint8_t col, uint8_t index, const RGB* static_color, bool is_win_fn) {
+    if (is_win_fn && is_key_modified_in_layer(row, col, WIN_BASE, WIN_FN)) {
         rgb_matrix_set_color(index, static_color->r, static_color->g, static_color->b);
     }
 }
@@ -228,17 +228,24 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
         base_layer = IS_LAYER_ON(WIN_BASE) ? WIN_BASE : MAC_BASE;
     }
 
-    // --- Анимация и цвета ---
-    Palette palette = get_current_palette(current_val);
-
     bool is_mac_fn = layer_state_is(MAC_FN);
     bool is_mac_f_layer = layer_state_is(MAC_F_LAYER);
+    bool is_win_fn = layer_state_is(WIN_FN);
+
+    // Skip palette calculation if no indicators needed
+    bool need_indicators = is_mac_fn || is_mac_f_layer || (base_layer == WIN_BASE && is_win_fn);
+    if (!need_indicators) {
+        return false;
+    }
+
+    // --- Анимация и цвета ---
+    Palette palette = get_current_palette(current_val);
 
     FOR_EACH_LED_IN_RANGE(led_min, led_max) {
         if (base_layer == MAC_BASE) {
             handle_mac_lighting(row, col, led_index, &palette, is_mac_fn, is_mac_f_layer);
         } else {
-            handle_win_lighting(row, col, led_index, &palette.main);
+            handle_win_lighting(row, col, led_index, &palette.main, is_win_fn);
         }
     }
     return false;
