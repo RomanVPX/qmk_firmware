@@ -122,7 +122,20 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 };
 // clang-format on
 
-#define IS_F_KEYCODE(keycode) ((keycode) >= KC_F1 && (keycode) <= KC_F12)
+#define F_KEY_START KC_F1
+#define F_KEY_END   KC_F12
+
+#define F_KEYS_COUNT (F_KEY_END - F_KEY_START + 1)
+#define IS_F_KEYCODE(kc) ((kc) >= F_KEY_START && (kc) <= F_KEY_END)
+
+#define F_LAYER_IDLE_TIMEOUT_MS 60000
+
+#define F_LAYER_REMINDER_INTERVAL_MS 45000
+#define F_LAYER_REMINDER_BLINK_MS 100
+
+static uint32_t reminder_cycle_timer = 0;
+static uint32_t reminder_step_timer = 0;
+static int8_t reminder_step = -1;
 
 // Вызывается при каждом изменении состояния слоев
 layer_state_t layer_state_set_user(layer_state_t state) {
@@ -150,7 +163,7 @@ bool is_key_modified_in_layer(uint8_t row, uint8_t col, uint8_t base_layer, uint
     return (base_keycode != target_keycode) && (target_keycode != KC_TRNS) && (target_keycode != KC_NO);
 }
 
-static inline void handle_mac_lighting(uint8_t row, uint8_t col, uint8_t index, const Palette* palette, bool is_mac_fn, bool is_mac_f_layer) {
+static inline void handle_mac_lighting(uint8_t row, uint8_t col, uint8_t index, const Palette* palette, bool is_mac_fn, bool is_mac_f_layer, bool reminder_blink) {
     uint16_t f_layer_keycode = keymap_key_to_keycode(MAC_F_LAYER, (keypos_t){col, row});
     uint16_t fn_keycode      = keymap_key_to_keycode(MAC_FN, (keypos_t){col, row});
 
@@ -158,6 +171,8 @@ static inline void handle_mac_lighting(uint8_t row, uint8_t col, uint8_t index, 
         if (is_mac_f_layer) {
             if (is_mac_fn) { // Изначально ВЫКЛ, Fn зажата
                 rgb_matrix_set_color(index, palette->pulsing.r, palette->pulsing.g, palette->pulsing.b);
+            } else if (reminder_blink) {
+                rgb_matrix_set_color(index, RGB_OFF);
             } else { // Изначально ВКЛ, Fn НЕ зажата
                 rgb_matrix_set_color(index, palette->alt.r, palette->alt.g, palette->alt.b);
             }
@@ -188,16 +203,17 @@ static inline void handle_win_lighting(uint8_t row, uint8_t col, uint8_t index, 
     #define INDICATOR_MAX_VALUE RGB_MATRIX_MAXIMUM_BRIGHTNESS
 #endif
 
-#ifndef F_LAYER_IDLE_TIMEOUT_MS
-    #define F_LAYER_IDLE_TIMEOUT_MS 60000
-#endif
-
 static inline bool is_f_layer_idle(void) {
 #ifdef LK_WIRELESS_ENABLE
     return !usb_power_connected() && last_input_activity_elapsed() >= F_LAYER_IDLE_TIMEOUT_MS;
 #else
     return false;
 #endif
+}
+
+static inline void reminder_reset(void) {
+    reminder_step = -1;
+    reminder_cycle_timer = timer_read32();
 }
 
 #define MAIN_COLOR_HSV                  (HSV){HSV_MAGENTA}
@@ -256,9 +272,29 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
     // --- Анимация и цвета ---
     Palette palette = get_current_palette(current_val);
 
+    // F-layer reminder animation state machine
+    if (is_mac_f_layer && !is_mac_fn) {
+        if (reminder_step == -1 && timer_elapsed32(reminder_cycle_timer) >= F_LAYER_REMINDER_INTERVAL_MS) {
+            reminder_step = 0;
+            reminder_step_timer = timer_read();
+        } else if (reminder_step >= 0 && timer_elapsed(reminder_step_timer) >= F_LAYER_REMINDER_BLINK_MS) {
+            reminder_step++;
+            reminder_step_timer = timer_read();
+            if (reminder_step >= F_KEYS_COUNT) {
+                reminder_reset();
+            }
+        }
+    } else {
+        if (reminder_step >= 0) reminder_reset();
+    }
+
+    uint8_t f_key_counter = 0;
     FOR_EACH_LED_IN_RANGE(led_min, led_max) {
         if (base_layer == MAC_BASE) {
-            handle_mac_lighting(row, col, led_index, &palette, is_mac_fn, is_mac_f_layer);
+            bool is_f = IS_F_KEYCODE(keymap_key_to_keycode(MAC_F_LAYER, (keypos_t){col, row}));
+            bool reminder_blink = is_f && (reminder_step >= 0 && f_key_counter == reminder_step);
+            if (is_f) f_key_counter++;
+            handle_mac_lighting(row, col, led_index, &palette, is_mac_fn, is_mac_f_layer, reminder_blink);
         } else {
             handle_win_lighting(row, col, led_index, &palette.main, is_win_fn);
         }
@@ -292,6 +328,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             } else {
                 layer_on(MAC_F_LAYER);
             }
+            reminder_reset();
         }
         return false;
     }
