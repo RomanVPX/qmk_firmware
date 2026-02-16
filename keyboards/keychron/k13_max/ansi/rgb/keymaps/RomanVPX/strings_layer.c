@@ -303,6 +303,8 @@ bool strings_layer_rgb_render(uint8_t led_min, uint8_t led_max, uint8_t current_
             rgb_matrix_set_color(led_index, rgb_strings_pulsing.r, rgb_strings_pulsing.g, rgb_strings_pulsing.b);
         } else if (is_active_key) {
             rgb_matrix_set_color(led_index, rgb_strings.r, rgb_strings.g, rgb_strings.b);
+        } else {
+            rgb_matrix_set_color(led_index, RGB_OFF);
         }
     }
 
