@@ -186,15 +186,13 @@ bool strings_layer_process_record(uint16_t keycode, keyrecord_t *record, uint8_t
             stop_animation();
         }
 
-        if (fn_held_in_strings_layer && is_string_macro) {
+        if (fn_held_in_strings_layer) {
             fn_used_for_combo = true;
-            start_animation(keycode, mac_base_layer);
-            return false;
-        }
-
-        if (fn_held_in_strings_layer && !is_string_macro) {
-            fn_used_for_combo = true;
-            deactivate_strings_layer(strings_layer);
+            if (is_string_macro) {
+                start_animation(keycode, mac_base_layer);
+            } else {
+                deactivate_strings_layer(strings_layer);
+            }
             return false;
         }
 

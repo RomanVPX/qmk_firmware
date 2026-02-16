@@ -140,17 +140,17 @@ static int8_t reminder_step = -1;
 // Вызывается при каждом изменении состояния слоев
 layer_state_t layer_state_set_user(layer_state_t state) {
     // Проверяем активацию/деактивацию MAC_FN
-    if ((IS_LAYER_ON_STATE(state, MAC_FN) && !layer_state_is(MAC_FN)) ||
-        (!IS_LAYER_ON_STATE(state, MAC_FN) && layer_state_is(MAC_FN))) {
+    if (IS_LAYER_ON_STATE(state, MAC_FN) != layer_state_is(MAC_FN)) {
         // MAC_FN активируется или деактивируется - инвертируем MAC_F_LAYER
         state = state ^ (1UL << MAC_F_LAYER);
     }
 
     // Проверяем переключение на слой WIN_BASE или WIN_FN
-    if (IS_LAYER_ON_STATE(state, WIN_BASE) || IS_LAYER_ON_STATE(state, WIN_FN)) {
-        // Если переключились в режим Windows, отключаем MAC_F_LAYER
-        state = state & ~(1UL << MAC_F_LAYER);
-    }
+    // if (IS_LAYER_ON_STATE(state, WIN_BASE) || IS_LAYER_ON_STATE(state, WIN_FN)) {
+    //     // Если переключились в режим Windows, отключаем MAC_F_LAYER
+    //     state = state & ~(1UL << MAC_F_LAYER);
+    // }
+    // ↑ Один хер не работает из-за того, что dip-switch, так что захардкодил в вендорский keyboards/keychron/k13_max/k13_max.c l:41-43
 
     return state;
 }
@@ -163,10 +163,7 @@ bool is_key_modified_in_layer(uint8_t row, uint8_t col, uint8_t base_layer, uint
     return (base_keycode != target_keycode) && (target_keycode != KC_TRNS) && (target_keycode != KC_NO);
 }
 
-static inline void handle_mac_lighting(uint8_t row, uint8_t col, uint8_t index, const Palette* palette, bool is_mac_fn, bool is_mac_f_layer, bool reminder_blink) {
-    uint16_t f_layer_keycode = keymap_key_to_keycode(MAC_F_LAYER, (keypos_t){col, row});
-    uint16_t fn_keycode      = keymap_key_to_keycode(MAC_FN, (keypos_t){col, row});
-
+static inline void handle_mac_lighting(uint8_t row, uint8_t col, uint8_t index, const Palette* palette, bool is_mac_fn, bool is_mac_f_layer, bool reminder_blink, uint16_t f_layer_keycode) {
     if (IS_F_KEYCODE(f_layer_keycode)) { // Это F-клавиша?
         if (is_mac_f_layer) {
             if (is_mac_fn) { // Изначально ВЫКЛ, Fn зажата
@@ -182,12 +179,18 @@ static inline void handle_mac_lighting(uint8_t row, uint8_t col, uint8_t index, 
         return; // F-клавиша обработана, дальше не идем
     }
 
-    if (is_mac_fn && fn_keycode == TOGGLE_F_LAYER) { // Это TOGGLE_F_LAYER?
+    if (!is_mac_fn) return;
+
+    uint16_t fn_keycode = KEYCODE_AT(MAC_FN, row, col);
+
+    if (fn_keycode == TOGGLE_F_LAYER) { // Это TOGGLE_F_LAYER?
         rgb_matrix_set_color(index, palette->pulsing.r, palette->pulsing.g, palette->pulsing.b);
         return; // Клавиша обработана
     }
 
-    if (is_mac_fn && is_key_modified_in_layer(row, col, MAC_BASE, MAC_FN)) { // Это другая измененная клавиша на MAC_FN?
+    // Это другая измененная клавиша на MAC_FN?
+    uint16_t base_keycode = KEYCODE_AT(MAC_BASE, row, col);
+    if (fn_keycode != base_keycode && fn_keycode != KC_TRNS && fn_keycode != KC_NO) {
         rgb_matrix_set_color(index, palette->main.r, palette->main.g, palette->main.b);
     }
 }
@@ -291,10 +294,11 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
     uint8_t f_key_counter = 0;
     FOR_EACH_LED_IN_RANGE(led_min, led_max) {
         if (base_layer == MAC_BASE) {
-            bool is_f = IS_F_KEYCODE(keymap_key_to_keycode(MAC_F_LAYER, (keypos_t){col, row}));
+            uint16_t f_layer_kc = KEYCODE_AT(MAC_F_LAYER, row, col);
+            bool is_f = IS_F_KEYCODE(f_layer_kc);
             bool reminder_blink = is_f && (reminder_step >= 0 && f_key_counter == reminder_step);
             if (is_f) f_key_counter++;
-            handle_mac_lighting(row, col, led_index, &palette, is_mac_fn, is_mac_f_layer, reminder_blink);
+            handle_mac_lighting(row, col, led_index, &palette, is_mac_fn, is_mac_f_layer, reminder_blink, f_layer_kc);
         } else {
             handle_win_lighting(row, col, led_index, &palette.main, is_win_fn);
         }
