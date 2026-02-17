@@ -144,13 +144,9 @@ layer_state_t layer_state_set_user(layer_state_t state) {
         // MAC_FN активируется или деактивируется - инвертируем MAC_F_LAYER
         state = state ^ (1UL << MAC_F_LAYER);
     }
-
-    // Проверяем переключение на слой WIN_BASE или WIN_FN
-    // if (IS_LAYER_ON_STATE(state, WIN_BASE) || IS_LAYER_ON_STATE(state, WIN_FN)) {
-    //     // Если переключились в режим Windows, отключаем MAC_F_LAYER
-    //     state = state & ~(1UL << MAC_F_LAYER);
-    // }
-    // ↑ Один хер не работает из-за того, что dip-switch, так что захардкодил в вендорский keyboards/keychron/k13_max/k13_max.c l:41-43
+    // Ideally, we should check here whether we've switched to WIN_BASE or WIN_FN in order to
+    // disable MAC_F_LAYER and MAC_FN, but since this is done via dip-switch (rather than through layer_state_set_user),
+    // it doesn't work, so I hardcoded it in the vendor's keyboards/keychron/k13_max/k13_max.c l:41-44
 
     return state;
 }
@@ -164,19 +160,27 @@ bool is_key_modified_in_layer(uint8_t row, uint8_t col, uint8_t base_layer, uint
 }
 
 static inline void handle_mac_lighting(uint8_t row, uint8_t col, uint8_t index, const Palette* palette, bool is_mac_fn, bool is_mac_f_layer, bool reminder_blink, uint16_t f_layer_keycode) {
-    if (IS_F_KEYCODE(f_layer_keycode)) { // Это F-клавиша?
-        if (is_mac_f_layer) {
-            if (is_mac_fn) { // Изначально ВЫКЛ, Fn зажата
-                rgb_matrix_set_color(index, palette->pulsing.r, palette->pulsing.g, palette->pulsing.b);
-            } else if (reminder_blink) {
-                rgb_matrix_set_color(index, RGB_OFF);
-            } else { // Изначально ВКЛ, Fn НЕ зажата
-                rgb_matrix_set_color(index, palette->alt.r, palette->alt.g, palette->alt.b);
+    if (IS_F_KEYCODE(f_layer_keycode)) {
+        if (!is_mac_f_layer) {
+            if (is_mac_fn) {
+                rgb_matrix_set_color(index, palette->antiphase.r, palette->antiphase.g, palette->antiphase.b);
             }
-        } else if (is_mac_fn) { // Изначально ВКЛ, Fn зажата
-            rgb_matrix_set_color(index, palette->antiphase.r, palette->antiphase.g, palette->antiphase.b);
+            return;
         }
-        return; // F-клавиша обработана, дальше не идем
+
+        if (is_mac_fn) {
+            rgb_matrix_set_color(index, palette->pulsing.r, palette->pulsing.g, palette->pulsing.b);
+            return;
+        }
+
+        if (reminder_blink) {
+            rgb_matrix_set_color(index, RGB_OFF);
+            return;
+        }
+
+        // Изначально ВКЛ, Fn НЕ зажата
+        rgb_matrix_set_color(index, palette->alt.r, palette->alt.g, palette->alt.b);
+        return;
     }
 
     if (!is_mac_fn) return;
