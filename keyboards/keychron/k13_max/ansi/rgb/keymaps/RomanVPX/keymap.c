@@ -310,7 +310,15 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
     return false;
 }
 
+extern void process_rgb_matrix_typing_heatmap_wide_space(uint8_t row, uint8_t col);
+
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
+    if (record->event.pressed) {
+        if (rgb_matrix_get_mode() == RGB_MATRIX_CUSTOM_TYPING_HEATMAP_WIDE_SPACE) {
+            process_rgb_matrix_typing_heatmap_wide_space(record->event.key.row, record->event.key.col);
+        }
+    }
+
     if (!games_process_record(keycode, record)) {
         return false;
     }

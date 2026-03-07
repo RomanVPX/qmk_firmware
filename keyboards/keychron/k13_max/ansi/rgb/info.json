@@ -11,7 +11,8 @@
     },
     "rgb_matrix": {
         "animations": {
-            "typing_heatmap": true,
+            "typing_heatmap": false,
+            "typing_heatmap_wide_space": true,
             "band_spiral_val": false,
             "breathing": false,
             "cycle_all": false,
